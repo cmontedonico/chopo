@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "cd ../.. && bun install && turbo build --filter=web",
+  "outputDirectory": "dist",
+  "installCommand": "cd ../.. && bun install",
+  "framework": "vite",
+  "ignoreCommand": "cd ../.. && npx turbo-ignore web"
+}

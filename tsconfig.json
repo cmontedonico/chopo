@@ -1,0 +1,3 @@
+{
+  "extends": "@chopo-v1/config/tsconfig.base.json"
+}
