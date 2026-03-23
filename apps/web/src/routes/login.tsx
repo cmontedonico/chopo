@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@chopo-v1/ui/components/card";
+import { Checkbox } from "@chopo-v1/ui/components/checkbox";
 import { Input } from "@chopo-v1/ui/components/input";
 import { Label } from "@chopo-v1/ui/components/label";
 import { Activity } from "lucide-react";
@@ -29,16 +30,25 @@ function LoginPage() {
     defaultValues: {
       email: "",
       password: "",
+      rememberMe: false,
     },
     onSubmit: async ({ value }) => {
       await authClient.signIn.email(
         {
           email: value.email,
           password: value.password,
+          rememberMe: value.rememberMe,
         },
         {
-          onSuccess: () => {
-            navigate({ to: "/dashboard" });
+          onSuccess: async (ctx) => {
+            const role = ctx.data?.user?.role;
+            const allowedRoles = ["super_admin", "user", "doctor"];
+            if (!role || !allowedRoles.includes(role)) {
+              await authClient.signOut();
+              toast.error("Rol no asignado");
+              return;
+            }
+            navigate({ to: "/app" });
             toast.success("Sesión iniciada correctamente");
           },
           onError: (error) => {
@@ -82,7 +92,7 @@ function LoginPage() {
                     id={field.name}
                     name={field.name}
                     type="email"
-                    placeholder="tu@email.com"
+                    placeholder=""
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(e) => field.handleChange(e.target.value)}
@@ -111,7 +121,7 @@ function LoginPage() {
                   <PasswordInput
                     id={field.name}
                     name={field.name}
-                    placeholder="••••••••"
+                    placeholder=""
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(e) => field.handleChange(e.target.value)}
@@ -121,6 +131,21 @@ function LoginPage() {
                       {error?.message}
                     </p>
                   ))}
+                </div>
+              )}
+            </form.Field>
+
+            <form.Field name="rememberMe">
+              {(field) => (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id={field.name}
+                    checked={field.state.value}
+                    onCheckedChange={(checked) => field.handleChange(checked === true)}
+                  />
+                  <Label htmlFor={field.name} className="text-sm font-normal">
+                    Recordarme
+                  </Label>
                 </div>
               )}
             </form.Field>
