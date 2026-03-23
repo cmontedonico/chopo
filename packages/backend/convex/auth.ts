@@ -1,5 +1,6 @@
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
 import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
+import { admin } from "better-auth/plugins";
 import { convex, crossDomain } from "@convex-dev/better-auth/plugins";
 
 import { components } from "./_generated/api";
@@ -7,14 +8,23 @@ import type { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 import authConfig from "./auth.config";
 import authSchema from "./betterAuth/schema";
+import {
+  ac,
+  doctorRole,
+  superAdminRole,
+  userRole,
+} from "./lib/access";
 
 const siteUrl = process.env.SITE_URL!;
 
-export const authComponent = createClient<DataModel, typeof authSchema>(components.betterAuth, {
-  local: {
-    schema: authSchema,
+export const authComponent = createClient<DataModel, typeof authSchema>(
+  components.betterAuth,
+  {
+    local: {
+      schema: authSchema,
+    },
   },
-});
+);
 
 export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
   return {
@@ -30,7 +40,17 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
         authConfig,
         jwksRotateOnTokenGenerationError: true,
       }),
-    ], // ... auth config
+      admin({
+        ac,
+        defaultRole: "user",
+        adminRoles: ["super_admin"],
+        roles: {
+          super_admin: superAdminRole,
+          user: userRole,
+          doctor: doctorRole,
+        },
+      }),
+    ],
   } satisfies BetterAuthOptions;
 };
 
@@ -40,9 +60,18 @@ function createAuth(ctx: GenericCtx<DataModel>) {
 
 export { createAuth };
 
+// getCurrentUser intentionally calls safeGetAuthUser directly (not getAuthUser)
+// so the frontend receives the banned flag and can show appropriate UI.
 export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {
-    return await authComponent.safeGetAuthUser(ctx);
+    const authUser = await authComponent.safeGetAuthUser(ctx);
+    if (!authUser) return null;
+
+    return {
+      ...authUser,
+      role: (authUser.role as string) ?? null,
+      banned: authUser.banned ?? false,
+    };
   },
 });

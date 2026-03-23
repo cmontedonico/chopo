@@ -1,15 +1,10 @@
 import { query } from "./_generated/server";
-import { authComponent } from "./auth";
+import { requireAuth } from "./lib/authorization";
 
 export const get = query({
   args: {},
   handler: async (ctx) => {
-    const authUser = await authComponent.safeGetAuthUser(ctx);
-    if (!authUser) {
-      return {
-        message: "Not authenticated",
-      };
-    }
+    await requireAuth(ctx);
     return {
       message: "This is private",
     };
