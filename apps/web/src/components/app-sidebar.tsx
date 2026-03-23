@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Avatar, AvatarFallback } from "@chopo-v1/ui/components/avatar";
 import {
   Sidebar,
@@ -18,19 +18,66 @@ import {
   LayoutDashboard,
   LogOut,
   Network,
+  ShieldCheck,
+  Stethoscope,
+  Users,
 } from "lucide-react";
 
-import { USER_PROFILE } from "@/lib/mock-data";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { ROLE_LABELS, type Role } from "@/lib/roles";
+import { authClient } from "@/lib/auth-client";
 
-const NAV_ITEMS = [
+interface NavItem {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  roles?: Role[];
+}
+
+const NAV_ITEMS: NavItem[] = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/app/upload", label: "Subir resultados", icon: FileUp },
-  { to: "/app/correlations", label: "Correlaciones", icon: Network },
-] as const;
+  { to: "/app/upload", label: "Subir resultados", icon: FileUp, roles: ["user", "super_admin"] },
+  { to: "/app/correlations", label: "Correlaciones", icon: Network, roles: ["user", "super_admin"] },
+];
+
+const ADMIN_ITEMS: NavItem[] = [
+  { to: "/app/admin/users", label: "Gestión de usuarios", icon: Users, roles: ["super_admin"] },
+  { to: "/app/admin/roles", label: "Roles y permisos", icon: ShieldCheck, roles: ["super_admin"] },
+];
+
+const DOCTOR_ITEMS: NavItem[] = [
+  { to: "/app/patients", label: "Pacientes", icon: Stethoscope, roles: ["doctor", "super_admin"] },
+];
+
+function filterByRole(items: NavItem[], role: Role | null): NavItem[] {
+  return items.filter((item) => !item.roles || (role && item.roles.includes(role)));
+}
 
 export function AppSidebar() {
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
+  const navigate = useNavigate();
+  const { user, role } = useCurrentUser();
+
+  const visibleNav = filterByRole(NAV_ITEMS, role);
+  const visibleAdmin = filterByRole(ADMIN_ITEMS, role);
+  const visibleDoctor = filterByRole(DOCTOR_ITEMS, role);
+
+  const initials = user?.name
+    ? user.name
+        .split(" ")
+        .map((part: string) => part[0])
+        .join("")
+        .slice(0, 2)
+    : "??";
+
+  const handleSignOut = async () => {
+    await authClient.signOut({
+      fetchOptions: {
+        onSuccess: () => navigate({ to: "/login" }),
+      },
+    });
+  };
 
   return (
     <Sidebar>
@@ -55,7 +102,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Navegación</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAV_ITEMS.map((item) => (
+              {visibleNav.map((item) => (
                 <SidebarMenuItem key={item.to}>
                   <SidebarMenuButton render={<Link to={item.to} />} isActive={currentPath === item.to}>
                     <item.icon className="h-4 w-4" />
@@ -66,6 +113,42 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {visibleDoctor.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Clínica</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleDoctor.map((item) => (
+                  <SidebarMenuItem key={item.to}>
+                    <SidebarMenuButton render={<Link to={item.to} />} isActive={currentPath === item.to}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {visibleAdmin.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Administración</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleAdmin.map((item) => (
+                  <SidebarMenuItem key={item.to}>
+                    <SidebarMenuButton render={<Link to={item.to} />} isActive={currentPath === item.to}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter>
@@ -74,23 +157,19 @@ export function AppSidebar() {
             <SidebarMenuButton size="lg">
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                  {USER_PROFILE.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .slice(0, 2)}
+                  {initials}
                 </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{USER_PROFILE.name}</span>
+                <span className="truncate font-semibold">{user?.name ?? "..."}</span>
                 <span className="truncate text-xs text-muted-foreground">
-                  {USER_PROFILE.age} años · {USER_PROFILE.bloodType}
+                  {role ? ROLE_LABELS[role] : "..."}
                 </span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton render={<Link to="/login" />}>
+            <SidebarMenuButton onClick={handleSignOut}>
               <LogOut className="h-4 w-4" />
               <span>Cerrar sesión</span>
             </SidebarMenuButton>

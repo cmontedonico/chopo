@@ -30,14 +30,8 @@ function SignupPage() {
       name: "",
       email: "",
       password: "",
-      confirmPassword: "",
     },
     onSubmit: async ({ value }) => {
-      if (value.password !== value.confirmPassword) {
-        toast.error("Las contraseñas no coinciden");
-        return;
-      }
-
       await authClient.signUp.email(
         {
           email: value.email,
@@ -46,7 +40,7 @@ function SignupPage() {
         },
         {
           onSuccess: () => {
-            navigate({ to: "/dashboard" });
+            navigate({ to: "/app" });
             toast.success("Cuenta creada correctamente");
           },
           onError: (error) => {
@@ -60,7 +54,6 @@ function SignupPage() {
         name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
         email: z.email("Correo electrónico inválido"),
         password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
-        confirmPassword: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
       }),
     },
   });
@@ -91,7 +84,7 @@ function SignupPage() {
                   <Input
                     id={field.name}
                     name={field.name}
-                    placeholder="Carlos Montedonico"
+                    placeholder=""
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(e) => field.handleChange(e.target.value)}
@@ -113,7 +106,7 @@ function SignupPage() {
                     id={field.name}
                     name={field.name}
                     type="email"
-                    placeholder="tu@email.com"
+                    placeholder=""
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(e) => field.handleChange(e.target.value)}
@@ -134,28 +127,7 @@ function SignupPage() {
                   <PasswordInput
                     id={field.name}
                     name={field.name}
-                    placeholder="••••••••"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                  />
-                  {field.state.meta.errors.map((error) => (
-                    <p key={error?.message} className="text-sm text-destructive">
-                      {error?.message}
-                    </p>
-                  ))}
-                </div>
-              )}
-            </form.Field>
-
-            <form.Field name="confirmPassword">
-              {(field) => (
-                <div className="space-y-2">
-                  <Label htmlFor={field.name}>Confirmar contraseña</Label>
-                  <PasswordInput
-                    id={field.name}
-                    name={field.name}
-                    placeholder="••••••••"
+                    placeholder=""
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(e) => field.handleChange(e.target.value)}
