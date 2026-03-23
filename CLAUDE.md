@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Migration of VoxSystem (legacy PHP/MySQL) to a modern stack. 9 phases (F0-F8), 458 story points, ~42 weeks.
+SaaS for medical test results management. Patients upload lab PDFs, the system extracts and stores each measurement atomically, generates tracking charts, enables sharing with doctors, and offers an AI copilot for personalized analysis. 8 phases (F1-F8), ~36 tasks, ~16 weeks.
 
 ## Tech Stack
 
@@ -18,7 +18,10 @@ Migration of VoxSystem (legacy PHP/MySQL) to a modern stack. 9 phases (F0-F8), 4
 | Linting | Oxlint 1.41.0 + Oxfmt 0.26.0 |
 | Testing | Vitest (unit) + Playwright (E2E) |
 | Deployment | Vercel (frontend) + Convex Cloud (backend) |
-| Media Storage | AWS S3 + CloudFront (unchanged from legacy) |
+| File Storage | Convex File Storage |
+| Payments | Stripe (MXN direct) |
+| AI | Claude API (Anthropic SDK) |
+| Email | Resend or AWS SES |
 
 ## Monorepo Structure
 
@@ -79,7 +82,7 @@ bun check            # Oxlint + Oxfmt
 | Project | ChopoV3 |
 | Project ID | a330c398-9331-4d0e-9fc8-a2857f983cb2 |
 | Project URL | https://linear.app/chopo/project/voxcloudv3-f893b7e80235 |
-| Notion Epics | https://www.notion.so/30bde604ac9b818aa344d3168b4c3791 |
+| Notion PRD | https://www.notion.so/32bde604ac9b80a0bfd0e5d8beeccb8e |
 
 ### Issue Statuses
 - `Backlog` → `Todo` → `In Progress` → `Done` / `Canceled` / `Duplicate`
@@ -210,17 +213,18 @@ const form = useForm({
 
 ## Phases & Epics Reference
 
-| Phase | Epic | Linear | Points |
-|-------|------|--------|--------|
-| F0 | Infraestructura DevOps, CI/CD | VOX-971 | 55 |
-| F1 | Fundación, Auth y Usuarios | VOX-917 | 34 |
-| F2 | Tiendas y Directorio Real-Time | VOX-918 | 29 |
-| F3 | CallCenter y Portal Cliente | VOX-919 | 55 |
-| F4 | Ventas y CRM | VOX-920 | 55 |
-| F5 | Contenido S3+CDN | VOX-921 | 64 |
-| F6 | Playlists y Crons | VOX-922 | 64 |
-| F7 | Cutover PHP | VOX-923 | 21 |
-| F8 | Agentic AI Copilot | VOX-961 | 55 |
+| Phase | Name | Weeks | Tasks |
+|-------|------|-------|-------|
+| F1 | Schema & Data Foundation | 2 | 6 |
+| F2 | PDF Upload & Parsing | 2 | 5 |
+| F3 | Dashboard & Visualizaciones | 2 | 4 |
+| F4 | Métricas Manuales | 1 | 3 |
+| F5 | Portal Médico & Compartir | 2 | 5 |
+| F6 | Mensajería & Notificaciones | 2 | 4 |
+| F7 | Pagos con Stripe | 2 | 4 |
+| F8 | AI Copilot & Correlaciones | 3 | 5 |
+
+Full PRD with tasks and prompts: [Notion PRD](https://www.notion.so/32bde604ac9b80a0bfd0e5d8beeccb8e)
 
 ## Environment Variables
 
@@ -232,8 +236,11 @@ VITE_CONVEX_SITE_URL=<convex-site-url>
 
 ### packages/backend/.env.local
 ```
-# Created by `convex dev --configure`
 CONVEX_DEPLOYMENT=<deployment-name>
+ANTHROPIC_API_KEY=<claude-api-key>
+STRIPE_SECRET_KEY=<stripe-secret>
+STRIPE_WEBHOOK_SECRET=<stripe-webhook-secret>
+RESEND_API_KEY=<resend-api-key>
 ```
 
 ## Rules
