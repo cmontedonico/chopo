@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 
 import "./global.css";
 import { Inter } from "next/font/google";
+import { createMetadataBase } from "./metadata-base";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -20,7 +21,7 @@ function getMetadataBaseUrl() {
 }
 
 export const metadata: Metadata = {
-  metadataBase: new URL(getMetadataBaseUrl()),
+  metadataBase: createMetadataBase(getMetadataBaseUrl()),
 };
 
 export default function Layout({ children }: LayoutProps<"/">) {
