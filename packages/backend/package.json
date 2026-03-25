@@ -10,6 +10,10 @@
   },
   "dependencies": {
     "@convex-dev/better-auth": "catalog:",
+    "@convex-dev/migrations": "^0.3.2",
+    "@convex-dev/rate-limiter": "^0.3.2",
+    "@convex-dev/workflow": "^0.3.7",
+    "@convex-dev/workpool": "^0.4.3",
     "better-auth": "catalog:",
     "convex": "catalog:",
     "dotenv": "catalog:",

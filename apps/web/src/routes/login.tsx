@@ -23,6 +23,22 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
+function getFieldErrorMessage(error: unknown): string | undefined {
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "object" && error !== null && "message" in error) {
+    return typeof error.message === "string" ? error.message : undefined;
+  }
+
+  return undefined;
+}
+
 function LoginPage() {
   const navigate = useNavigate();
 
@@ -61,6 +77,7 @@ function LoginPage() {
       onSubmit: z.object({
         email: z.email("Correo electrónico inválido"),
         password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+        rememberMe: z.boolean(),
       }),
     },
   });
@@ -97,11 +114,16 @@ function LoginPage() {
                     onBlur={field.handleBlur}
                     onChange={(e) => field.handleChange(e.target.value)}
                   />
-                  {field.state.meta.errors.map((error) => (
-                    <p key={error?.message} className="text-sm text-destructive">
-                      {error?.message}
-                    </p>
-                  ))}
+                  {field.state.meta.errors.map((error, index) => {
+                    const message = getFieldErrorMessage(error);
+                    if (!message) return null;
+
+                    return (
+                      <p key={`${field.name}-error-${index}`} className="text-sm text-destructive">
+                        {message}
+                      </p>
+                    );
+                  })}
                 </div>
               )}
             </form.Field>
@@ -126,11 +148,16 @@ function LoginPage() {
                     onBlur={field.handleBlur}
                     onChange={(e) => field.handleChange(e.target.value)}
                   />
-                  {field.state.meta.errors.map((error) => (
-                    <p key={error?.message} className="text-sm text-destructive">
-                      {error?.message}
-                    </p>
-                  ))}
+                  {field.state.meta.errors.map((error, index) => {
+                    const message = getFieldErrorMessage(error);
+                    if (!message) return null;
+
+                    return (
+                      <p key={`${field.name}-error-${index}`} className="text-sm text-destructive">
+                        {message}
+                      </p>
+                    );
+                  })}
                 </div>
               )}
             </form.Field>
