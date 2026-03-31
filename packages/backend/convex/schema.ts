@@ -1,51 +1,15 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
-// ── Shared validators ──────────────────────────────────────────────
-
-const examStatus = v.union(
-  v.literal("pending"),
-  v.literal("processing"),
-  v.literal("parsed"),
-  v.literal("error"),
-);
-
-const resultStatus = v.union(
-  v.literal("normal"),
-  v.literal("low"),
-  v.literal("high"),
-  v.literal("critical_low"),
-  v.literal("critical_high"),
-);
-
-const examType = v.union(
-  v.literal("blood"),
-  v.literal("urine"),
-  v.literal("imaging"),
-  v.literal("pathology"),
-  v.literal("other"),
-);
-
-const metricInputType = v.union(
-  v.literal("numeric"),
-  v.literal("scale"),
-  v.literal("boolean"),
-);
-
-// ── Schema ─────────────────────────────────────────────────────────
-// Note: userId/patientId/doctorId fields are v.string() because user
-// records live in the Better-Auth component namespace, not in the app
-// schema. Component-scoped IDs cannot be referenced with v.id().
-
 export default defineSchema({
   exams: defineTable({
     patientId: v.string(),
     labName: v.string(),
-    examType,
+    examType: v.string(),
     examDate: v.number(),
     fileId: v.id("_storage"),
     fileName: v.string(),
-    status: examStatus,
+    status: v.string(),
     notes: v.optional(v.string()),
     deletedAt: v.optional(v.number()),
     createdAt: v.number(),
@@ -59,17 +23,14 @@ export default defineSchema({
     examId: v.id("exams"),
     patientId: v.string(),
     name: v.string(),
-    value: v.optional(v.number()),
-    textValue: v.optional(v.string()),
+    value: v.number(),
     unit: v.string(),
-    referenceMin: v.optional(v.number()),
-    referenceMax: v.optional(v.number()),
-    referenceText: v.optional(v.string()),
-    status: resultStatus,
+    referenceMin: v.number(),
+    referenceMax: v.number(),
+    status: v.string(),
     category: v.string(),
     deletedAt: v.optional(v.number()),
     createdAt: v.number(),
-    updatedAt: v.number(),
   })
     .index("by_exam", ["examId"])
     .index("by_patient", ["patientId"])
@@ -78,17 +39,15 @@ export default defineSchema({
 
   metricCatalog: defineTable({
     name: v.string(),
-    category: v.string(),
     unit: v.string(),
-    inputType: metricInputType,
+    inputType: v.string(),
     referenceMin: v.optional(v.number()),
     referenceMax: v.optional(v.number()),
     scaleMax: v.optional(v.number()),
     icon: v.string(),
     isActive: v.boolean(),
   })
-    .index("by_name", ["name"])
-    .index("by_category", ["category"]),
+    .index("by_name", ["name"]),
 
   manualMetrics: defineTable({
     patientId: v.string(),
