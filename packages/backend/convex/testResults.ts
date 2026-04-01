@@ -205,6 +205,7 @@ export const createBatch = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
     const exam = await getExamOrThrow(ctx, args.examId);
+    await assertCanAccessPatient(ctx, user, exam.patientId);
     const now = Date.now();
     const createdIds: Array<Id<"testResults">> = [];
 
