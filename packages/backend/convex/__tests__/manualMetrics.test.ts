@@ -1,12 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Doc, Id } from "../_generated/dataModel";
-
-vi.mock("../lib/authorization", () => ({
-  requireAuth: vi.fn(),
-  requireRole: vi.fn(),
-}));
-
-import * as auth from "../lib/authorization";
 import {
   create,
   getLatestByPatient,
@@ -34,13 +27,16 @@ type Handler<TArgs, TResult> = {
   _handler: (ctx: unknown, args: TArgs) => TResult;
 };
 
-const DEFAULT_USER: MockUser = {
-  id: "patient_1",
-  name: "Test User",
-  email: "user@example.com",
-  role: "user",
-  banned: false,
-};
+function makeUser(overrides: Partial<MockUser> = {}): MockUser {
+  return {
+    id: "patient_1",
+    name: "Test User",
+    email: "user@example.com",
+    role: "user",
+    banned: false,
+    ...overrides,
+  };
+}
 
 function makeCatalog(overrides: Partial<MockCatalog> = {}): MockCatalog {
   return {
@@ -78,11 +74,13 @@ function createMockCtx({
   manualMetrics = [],
   auditLog = [],
   doctorPatients = [],
+  currentUser = makeUser(),
 }: {
   metricCatalog?: MockCatalog[];
   manualMetrics?: MockMetric[];
   auditLog?: MockAudit[];
   doctorPatients?: MockAssignment[];
+  currentUser?: MockUser;
 } = {}) {
   const catalogStore = new Map(metricCatalog.map((catalog) => [catalog._id, { ...catalog }]));
   const metricStore = new Map(manualMetrics.map((metric) => [metric._id, { ...metric }]));
@@ -90,6 +88,17 @@ function createMockCtx({
   const doctorPatientStore = new Map(
     doctorPatients.map((assignment) => [assignment._id, { ...assignment }]),
   );
+  const sessionStore = new Map([
+    [
+      "session_1",
+      {
+        _id: "session_1",
+        expiresAt: Date.now() + 60_000,
+        token: "session-token",
+        ipAddress: "127.0.0.1",
+      },
+    ],
+  ]);
   const counters = {
     metricCatalog: catalogStore.size,
     manualMetrics: metricStore.size,
@@ -227,15 +236,36 @@ function createMockCtx({
   };
 
   return {
-    ctx: { db },
-    catalogStore,
+    ctx: {
+      db,
+      auth: {
+        getUserIdentity: vi.fn(async () => ({
+          subject: currentUser.id,
+          sessionId: "session_1",
+        })),
+      },
+      runQuery: vi.fn(async (_queryFn: unknown, args: { model: string }) => {
+        if (args.model === "session") {
+          return sessionStore.get("session_1");
+        }
+
+        if (args.model === "user") {
+          return {
+            _id: currentUser.id,
+            name: currentUser.name,
+            email: currentUser.email,
+            role: currentUser.role,
+            banned: currentUser.banned,
+          };
+        }
+
+        return null;
+      }),
+    },
     metricStore,
     auditStore,
   };
 }
-
-const requireAuthMock = vi.mocked(auth.requireAuth);
-const requireRoleMock = vi.mocked(auth.requireRole);
 
 const createHandler = create as unknown as Handler<
   {
@@ -304,7 +334,6 @@ describe("convex/manualMetrics", () => {
     });
     const dateNowSpy = vi.spyOn(Date, "now");
     dateNowSpy.mockReturnValue(1_700_000_100_000);
-    requireRoleMock.mockResolvedValue(DEFAULT_USER);
 
     const metricId = await createHandler._handler(ctx, {
       catalogId: "metricCatalog_1" as Id<"metricCatalog">,
@@ -315,7 +344,7 @@ describe("convex/manualMetrics", () => {
 
     expect(metricId).toBe("manualMetrics_1");
     expect(metricStore.get(metricId)).toMatchObject({
-      patientId: DEFAULT_USER.id,
+      patientId: "patient_1",
       catalogId: "metricCatalog_1",
       value: 7,
       recordedAt: 1_700_000_050_000,
@@ -327,12 +356,11 @@ describe("convex/manualMetrics", () => {
       action: "create",
       tableName: "manualMetrics",
       recordId: metricId,
-      userId: DEFAULT_USER.id,
+      userId: "patient_1",
     });
-    expect(requireRoleMock).toHaveBeenCalledWith(ctx, "user", "super_admin");
   });
 
-  it("create rejects inactive catalogs and scale values above the maximum", async () => {
+  it("create rejects missing catalogs, inactive catalogs, and scale values above the maximum", async () => {
     const { ctx } = createMockCtx({
       metricCatalog: [
         makeCatalog({
@@ -346,7 +374,14 @@ describe("convex/manualMetrics", () => {
         }),
       ],
     });
-    requireRoleMock.mockResolvedValue(DEFAULT_USER);
+
+    await expect(
+      createHandler._handler(ctx, {
+        catalogId: "metricCatalog_missing" as Id<"metricCatalog">,
+        value: 5,
+        recordedAt: 1_700_000_050_000,
+      }),
+    ).rejects.toThrow("Metric catalog not found");
 
     await expect(
       createHandler._handler(ctx, {
@@ -377,7 +412,6 @@ describe("convex/manualMetrics", () => {
     });
     const dateNowSpy = vi.spyOn(Date, "now");
     dateNowSpy.mockReturnValue(1_700_000_200_000);
-    requireAuthMock.mockResolvedValue(DEFAULT_USER);
 
     const updated = await updateHandler._handler(ctx, {
       metricId: existingMetric._id,
@@ -412,7 +446,6 @@ describe("convex/manualMetrics", () => {
     });
     const dateNowSpy = vi.spyOn(Date, "now");
     dateNowSpy.mockReturnValue(1_700_000_300_000);
-    requireAuthMock.mockResolvedValue(DEFAULT_USER);
 
     await softDeleteHandler._handler(ctx, {
       metricId: existingMetric._id,
@@ -488,7 +521,6 @@ describe("convex/manualMetrics", () => {
         }),
       ],
     });
-    requireAuthMock.mockResolvedValue(DEFAULT_USER);
 
     const latest = await getLatestByPatientHandler._handler(ctx, {});
 
@@ -520,19 +552,18 @@ describe("convex/manualMetrics", () => {
           _id: "doctorPatients_1" as Id<"doctorPatients">,
           _creationTime: 0,
           doctorAuthUserId: "doctor_1",
-          patientAuthUserId: DEFAULT_USER.id,
+          patientAuthUserId: "patient_1",
           createdAt: 1_700_000_000_000,
         },
       ],
-    });
-    requireAuthMock.mockResolvedValue({
-      ...DEFAULT_USER,
-      id: "doctor_1",
-      role: "doctor",
+      currentUser: makeUser({
+        id: "doctor_1",
+        role: "doctor",
+      }),
     });
 
     const metrics = await listByPatientHandler._handler(ctx, {
-      patientId: DEFAULT_USER.id,
+      patientId: "patient_1",
     });
 
     expect(metrics).toHaveLength(1);
