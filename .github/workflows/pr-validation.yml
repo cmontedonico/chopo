@@ -53,8 +53,5 @@ jobs:
           git log --format=%B -n 1 "$first_commit_sha" > .git/FIRST_BRANCH_COMMIT_MSG
           bunx commitlint --config commitlint.config.mjs --edit .git/FIRST_BRANCH_COMMIT_MSG
 
-      - name: Lint workspace
-        run: node node_modules/oxlint/dist/cli.js .
-
-      - name: Type check workspace
-        run: bun run check-types
+      - name: Run CI validation
+        run: bun run check:ci
