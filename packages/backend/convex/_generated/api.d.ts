@@ -10,14 +10,17 @@
 
 import type * as auth from "../auth.js";
 import type * as cache from "../cache.js";
+import type * as exams from "../exams.js";
 import type * as healthCheck from "../healthCheck.js";
 import type * as http from "../http.js";
 import type * as lib_access from "../lib/access.js";
 import type * as lib_authorization from "../lib/authorization.js";
+import type * as metricCatalog from "../metricCatalog.js";
 import type * as migrations from "../migrations.js";
 import type * as patients from "../patients.js";
 import type * as privateData from "../privateData.js";
 import type * as rateLimiter from "../rateLimiter.js";
+import type * as testResults from "../testResults.js";
 import type * as workflow from "../workflow.js";
 import type * as workpool from "../workpool.js";
 
@@ -30,14 +33,17 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   cache: typeof cache;
+  exams: typeof exams;
   healthCheck: typeof healthCheck;
   http: typeof http;
   "lib/access": typeof lib_access;
   "lib/authorization": typeof lib_authorization;
+  metricCatalog: typeof metricCatalog;
   migrations: typeof migrations;
   patients: typeof patients;
   privateData: typeof privateData;
   rateLimiter: typeof rateLimiter;
+  testResults: typeof testResults;
   workflow: typeof workflow;
   workpool: typeof workpool;
 }>;
