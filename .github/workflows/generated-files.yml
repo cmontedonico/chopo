@@ -48,10 +48,28 @@ jobs:
       - name: Verify TanStack route tree is committed
         run: git diff --exit-code -- apps/web/src/routeTree.gen.ts
 
+      - name: Check Convex deployment availability
+        id: convex-deployment
+        shell: bash
+        run: |
+          if [ -n "${{ secrets.CONVEX_DEPLOYMENT }}" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Regenerate Convex generated files
+        if: steps.convex-deployment.outputs.available == 'true'
+        env:
+          CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
         run: |
           cd packages/backend
           node ../../node_modules/convex/dist/cli.bundle.cjs codegen
 
       - name: Verify Convex generated files are committed
+        if: steps.convex-deployment.outputs.available == 'true'
         run: git diff --exit-code -- packages/backend/convex/_generated packages/backend/convex/betterAuth/_generated
+
+      - name: Skip Convex generated files validation
+        if: steps.convex-deployment.outputs.available != 'true'
+        run: echo "Skipping Convex generated file validation because CONVEX_DEPLOYMENT is not configured in repository secrets."
