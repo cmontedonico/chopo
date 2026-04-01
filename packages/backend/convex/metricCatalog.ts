@@ -229,9 +229,11 @@ export const update = mutation({
 
     await ctx.db.patch(args.catalogId, updates);
 
-    return {
-      ...catalog,
-      ...updates,
-    } as Doc<"metricCatalog">;
+    const updated = await ctx.db.get(args.catalogId);
+    if (!updated) {
+      throw new Error("Metric not found");
+    }
+
+    return updated;
   },
 });
