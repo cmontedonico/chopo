@@ -12,6 +12,7 @@
     "test:exams": "vitest run convex/__tests__/exams.test.ts"
   },
   "dependencies": {
+    "@convex-dev/action-cache": "^0.3.0",
     "@convex-dev/better-auth": "catalog:",
     "@convex-dev/migrations": "^0.3.2",
     "@convex-dev/rate-limiter": "^0.3.2",
@@ -23,8 +24,8 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^24.3.0",
     "@chopo-v1/config": "workspace:*",
+    "@types/node": "^24.3.0",
     "typescript": "^5",
     "vitest": "^3.2.4"
   }
