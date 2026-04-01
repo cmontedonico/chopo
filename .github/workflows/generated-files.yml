@@ -1,0 +1,77 @@
+name: Generated Files
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+
+concurrency:
+  group: generated-files-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate-generated-files:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.18
+
+      - name: Install dependencies
+        env:
+          HUSKY: 0
+        run: bun install --frozen-lockfile
+
+      - name: Regenerate TanStack route tree
+        run: |
+          cd apps/web
+          bun run build
+
+      - name: Verify TanStack route tree is committed
+        run: git diff --exit-code -- apps/web/src/routeTree.gen.ts
+
+      - name: Check Convex deployment availability
+        id: convex-deployment
+        shell: bash
+        env:
+          CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
+        run: |
+          if [ -n "$CONVEX_DEPLOYMENT" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Regenerate Convex generated files
+        if: steps.convex-deployment.outputs.available == 'true'
+        env:
+          CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
+        run: |
+          cd packages/backend
+          node ../../node_modules/convex/dist/cli.bundle.cjs codegen
+
+      - name: Verify Convex generated files are committed
+        if: steps.convex-deployment.outputs.available == 'true'
+        run: git diff --exit-code -- packages/backend/convex/_generated packages/backend/convex/betterAuth/_generated
+
+      - name: Skip Convex generated files validation
+        if: steps.convex-deployment.outputs.available != 'true'
+        run: echo "Skipping Convex generated file validation because CONVEX_DEPLOYMENT is not configured in repository secrets."

@@ -28,10 +28,13 @@
     "build": "turbo build",
     "test": "turbo test",
     "check-types": "turbo check-types",
+    "check:format": "node node_modules/oxfmt/dist/cli.js --check .",
+    "check:ci": "node node_modules/oxlint/dist/cli.js && node node_modules/oxfmt/dist/cli.js --check . && bun run check-types",
+    "commitlint": "commitlint --config commitlint.config.mjs",
     "dev:web": "turbo -F web dev",
     "dev:server": "turbo -F @chopo-v1/backend dev",
     "dev:setup": "turbo -F @chopo-v1/backend dev:setup",
-    "check": "oxlint && oxfmt --write",
+    "check": "node node_modules/oxlint/dist/cli.js && node node_modules/oxfmt/dist/cli.js --write .",
     "prepare": "husky"
   },
   "dependencies": {
@@ -41,6 +44,8 @@
   },
   "devDependencies": {
     "@chopo-v1/config": "workspace:*",
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.2",
     "oxfmt": "^0.26.0",
@@ -49,9 +54,11 @@
     "typescript": "^5"
   },
   "lint-staged": {
+    "*.{js,jsx,ts,tsx,mjs,cjs}": [
+      "node node_modules/oxlint/dist/cli.js"
+    ],
     "*": [
-      "oxlint",
-      "oxfmt --write"
+      "node node_modules/oxfmt/dist/cli.js --write"
     ]
   },
   "packageManager": "bun@1.2.18"
