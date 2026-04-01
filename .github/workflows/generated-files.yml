@@ -52,7 +52,7 @@ jobs:
         id: convex-deployment
         shell: bash
         run: |
-          if [ -n "${{ secrets.CONVEX_DEPLOYMENT }}" ]; then
+          if [ -n "$CONVEX_DEPLOYMENT" ]; then
             echo "available=true" >> "$GITHUB_OUTPUT"
           else
             echo "available=false" >> "$GITHUB_OUTPUT"
