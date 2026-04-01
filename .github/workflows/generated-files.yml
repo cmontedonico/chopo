@@ -51,6 +51,8 @@ jobs:
       - name: Check Convex deployment availability
         id: convex-deployment
         shell: bash
+        env:
+          CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
         run: |
           if [ -n "$CONVEX_DEPLOYMENT" ]; then
             echo "available=true" >> "$GITHUB_OUTPUT"
