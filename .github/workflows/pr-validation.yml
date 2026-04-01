@@ -1,0 +1,55 @@
+name: PR Validation
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+
+concurrency:
+  group: pr-validation-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.18
+
+      - name: Install dependencies
+        env:
+          HUSKY: 0
+        run: bun install --frozen-lockfile
+
+      - name: Validate first branch commit message
+        if: ${{ github.head_ref != 'main' }}
+        shell: bash
+        run: |
+          first_commit_sha="$(git rev-list --reverse "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}" | sed -n '1p')"
+
+          if [ -z "$first_commit_sha" ]; then
+            exit 0
+          fi
+
+          git log --format=%B -n 1 "$first_commit_sha" > .git/FIRST_BRANCH_COMMIT_MSG
+          bunx commitlint --config commitlint.config.mjs --edit .git/FIRST_BRANCH_COMMIT_MSG
+
+      - name: Lint workspace
+        run: node node_modules/oxlint/dist/cli.js .
+
+      - name: Type check workspace
+        run: bun run check-types
