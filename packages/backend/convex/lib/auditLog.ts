@@ -87,9 +87,9 @@ async function getAuditEntriesByUser(
     .query("auditLog")
     .withIndex("by_user", (q) => q.eq("userId", userId))
     .order("desc")
-    .collect();
+    .take(limit);
 
-  return entries.slice(0, limit);
+  return entries;
 }
 
 export const getByRecord = query({
