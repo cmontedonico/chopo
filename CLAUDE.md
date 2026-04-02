@@ -4,6 +4,11 @@
 
 SaaS for medical test results management. Patients upload lab PDFs, the system extracts and stores each measurement atomically, generates tracking charts, enables sharing with doctors, and offers an AI copilot for personalized analysis. 8 phases (F1-F8), ~36 tasks, ~16 weeks.
 
+## Assistant Reference Docs
+
+- Start here for repo-wide context: this file.
+- For the current Convex backend map, tables, file responsibilities, and test coverage, read [ARCHITECTURE.md](/Users/cmontedonico/repos/chopo/ARCHITECTURE.md).
+
 ## Tech Stack
 
 | Layer | Technology |
