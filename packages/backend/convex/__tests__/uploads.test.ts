@@ -1,13 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Doc, Id } from "../_generated/dataModel";
-import { createExamFromUpload, generateUploadUrl, getUploadedFileUrl } from "../uploads";
-
-vi.mock("../lib/authorization", () => ({
-  requireAuth: vi.fn(),
-  requireRole: vi.fn(),
-}));
-
-import * as auth from "../lib/authorization";
+import type { requireAuth, requireRole } from "../lib/authorization";
+import {
+  createExamFromUpload,
+  generateUploadUrl,
+  getUploadedFileUrl,
+  resetUploadAuthForTests,
+  resetUploadRoleForTests,
+  setUploadAuthForTests,
+  setUploadRoleForTests,
+} from "../uploads";
 
 type MockUser = {
   id: string;
@@ -142,9 +144,11 @@ function createMockCtx({
   return { ctx: { db, scheduler, storage }, examStore, auditStore, insertedExams, storage };
 }
 
-// Use the mocked module functions directly so the upload handlers see the stubbed auth behavior.
-const mockedRequireAuth = vi.mocked(auth.requireAuth);
-const mockedRequireRole = vi.mocked(auth.requireRole);
+const mockedRequireAuth = vi.fn(async () => makeUser());
+const mockedRequireRole = vi.fn(async () => makeUser());
+
+type MockRequireAuth = typeof requireAuth;
+type MockRequireRole = typeof requireRole;
 
 const generateUploadUrlHandler = generateUploadUrl as unknown as Handler<{}, Promise<string>>;
 const createExamFromUploadHandler = createExamFromUpload as unknown as Handler<
@@ -169,12 +173,16 @@ describe("convex/uploads", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.restoreAllMocks();
+    resetUploadAuthForTests();
+    resetUploadRoleForTests();
+    setUploadAuthForTests(mockedRequireAuth as MockRequireAuth);
+    setUploadRoleForTests(mockedRequireRole as MockRequireRole);
   });
 
   it("generateUploadUrl returns a string URL", async () => {
     const { ctx, storage } = createMockCtx();
     mockedRequireAuth.mockResolvedValue(makeUser());
-    vi.mocked(storage.generateUploadUrl).mockResolvedValueOnce("https://upload.example");
+    storage.generateUploadUrl.mockResolvedValueOnce("https://upload.example");
 
     const result = await generateUploadUrlHandler._handler(ctx, {});
 
@@ -254,7 +262,7 @@ describe("convex/uploads", () => {
     expect(nullResult).toBeNull();
     expect(storage.getUrl).toHaveBeenCalledWith("storage_789");
 
-    vi.mocked(storage.getUrl).mockResolvedValueOnce("https://storage.convex.dev/pdf");
+    storage.getUrl.mockResolvedValueOnce("https://storage.convex.dev/pdf");
     const urlResult = await getUploadedFileUrlHandler._handler(ctx, {
       fileId: "storage_790" as Id<"_storage">,
     });

@@ -7,6 +7,28 @@ import { createAuditEntry } from "./lib/auditLog";
 
 type Ctx = QueryCtx | MutationCtx;
 
+type RequireAuthFn = typeof requireAuth;
+type RequireRoleFn = typeof requireRole;
+
+let requireUploadAuth: RequireAuthFn = requireAuth;
+let requireUploadRole: RequireRoleFn = requireRole;
+
+export function setUploadAuthForTests(nextRequireAuth: RequireAuthFn) {
+  requireUploadAuth = nextRequireAuth;
+}
+
+export function resetUploadAuthForTests() {
+  requireUploadAuth = requireAuth;
+}
+
+export function setUploadRoleForTests(nextRequireRole: RequireRoleFn) {
+  requireUploadRole = nextRequireRole;
+}
+
+export function resetUploadRoleForTests() {
+  requireUploadRole = requireRole;
+}
+
 function isActiveExam(exam: Doc<"exams">) {
   return exam.deletedAt === undefined;
 }
@@ -23,7 +45,7 @@ async function countActiveExamsForPatient(ctx: Ctx, patientId: string) {
 export const generateUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
-    await requireAuth(ctx);
+    await requireUploadAuth(ctx);
     return await ctx.storage.generateUploadUrl();
   },
 });
@@ -38,7 +60,7 @@ export const createExamFromUpload = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await requireRole(ctx, "user", "super_admin");
+    const user = await requireUploadRole(ctx, "user", "super_admin");
 
     const activeExamCount = await countActiveExamsForPatient(ctx, user.id);
     const maxExams = 2;
@@ -80,7 +102,7 @@ export const getUploadedFileUrl = query({
     fileId: v.id("_storage"),
   },
   handler: async (ctx, args) => {
-    await requireAuth(ctx);
+    await requireUploadAuth(ctx);
     return await ctx.storage.getUrl(args.fileId);
   },
 });
