@@ -64,6 +64,69 @@ describe("convex/lib/labParser", () => {
       referenceMax: 4,
       category: "TIROIDES",
     });
+    expect(output.results[7]).toEqual({
+      name: "Vitamina D (25-OH)",
+      value: 31.5,
+      unit: "ng/mL",
+      referenceMin: 30,
+      referenceMax: 100,
+      category: "VITAMINAS",
+    });
+  });
+
+  it("parses analytes whose names contain digits without mistaking the name for the value", () => {
+    const text = [
+      "HbA1c            5.6   %         4.0 - 5.6",
+      "T3 libre         3.1   pg/mL     2.0 - 4.4",
+      "T4 libre         1.2   ng/dL     0.8 - 1.8",
+      "Vitamina B12     520   pg/mL     200 - 900",
+      "Vitamina D (25-OH) 31.5 ng/mL    30 - 100",
+    ].join("\n");
+
+    const output = parseLabResults(text, "panel hormonal");
+
+    expect(output.results).toEqual([
+      {
+        name: "Hemoglobina glucosilada (HbA1c)",
+        value: 5.6,
+        unit: "%",
+        referenceMin: 4,
+        referenceMax: 5.6,
+        category: "METABOLISMO",
+      },
+      {
+        name: "T3 libre",
+        value: 3.1,
+        unit: "pg/mL",
+        referenceMin: 2,
+        referenceMax: 4.4,
+        category: "TIROIDES",
+      },
+      {
+        name: "T4 libre",
+        value: 1.2,
+        unit: "ng/dL",
+        referenceMin: 0.8,
+        referenceMax: 1.8,
+        category: "TIROIDES",
+      },
+      {
+        name: "Vitamina B12",
+        value: 520,
+        unit: "pg/mL",
+        referenceMin: 200,
+        referenceMax: 900,
+        category: "VITAMINAS",
+      },
+      {
+        name: "Vitamina D (25-OH)",
+        value: 31.5,
+        unit: "ng/mL",
+        referenceMin: 30,
+        referenceMax: 100,
+        category: "VITAMINAS",
+      },
+    ]);
   });
 
   it("keeps unknown-but-parseable rows in unrecognized and ignores junk", () => {

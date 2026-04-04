@@ -1,3 +1,5 @@
+import { DEFAULT_LAB_ANALYTES, type LabAnalyteCatalogEntry } from "./labAnalyteCatalogData";
+
 export interface ParsedResult {
   name: string;
   value: number;
@@ -14,286 +16,8 @@ export interface ParseOutput {
   parsedCount: number;
 }
 
-type CatalogEntry = {
-  name: string;
-  category: string;
-  aliases: string[];
-};
-
-const CATALOG: CatalogEntry[] = [
-  {
-    name: "Glucosa",
-    category: "METABOLISMO",
-    aliases: ["glucosa"],
-  },
-  {
-    name: "Hemoglobina glucosilada (HbA1c)",
-    category: "METABOLISMO",
-    aliases: ["hemoglobina glucosilada", "hba1c", "hemoglobina glucosilada hba1c"],
-  },
-  {
-    name: "Insulina",
-    category: "METABOLISMO",
-    aliases: ["insulina"],
-  },
-  {
-    name: "Ácido úrico",
-    category: "METABOLISMO",
-    aliases: ["acido urico", "ácido úrico"],
-  },
-  {
-    name: "Colesterol total",
-    category: "LÍPIDOS",
-    aliases: ["colesterol total", "cholesterol total"],
-  },
-  {
-    name: "Colesterol HDL",
-    category: "LÍPIDOS",
-    aliases: ["colesterol hdl", "hdl"],
-  },
-  {
-    name: "Colesterol LDL",
-    category: "LÍPIDOS",
-    aliases: ["colesterol ldl", "ldl"],
-  },
-  {
-    name: "Triglicéridos",
-    category: "LÍPIDOS",
-    aliases: ["trigliceridos", "triglicéridos"],
-  },
-  {
-    name: "Colesterol VLDL",
-    category: "LÍPIDOS",
-    aliases: ["colesterol vldl", "vldl"],
-  },
-  {
-    name: "Índice aterogénico",
-    category: "LÍPIDOS",
-    aliases: ["indice aterogenico", "índice aterogénico", "indice aterogénico"],
-  },
-  {
-    name: "Hemoglobina",
-    category: "HEMATOLOGÍA",
-    aliases: ["hemoglobina"],
-  },
-  {
-    name: "Hematocrito",
-    category: "HEMATOLOGÍA",
-    aliases: ["hematocrito"],
-  },
-  {
-    name: "Eritrocitos",
-    category: "HEMATOLOGÍA",
-    aliases: ["eritrocitos", "globulos rojos", "glóbulos rojos"],
-  },
-  {
-    name: "Leucocitos",
-    category: "HEMATOLOGÍA",
-    aliases: ["leucocitos"],
-  },
-  {
-    name: "Plaquetas",
-    category: "HEMATOLOGÍA",
-    aliases: ["plaquetas"],
-  },
-  {
-    name: "VCM",
-    category: "HEMATOLOGÍA",
-    aliases: ["vcm", "volumen corpuscular medio"],
-  },
-  {
-    name: "HCM",
-    category: "HEMATOLOGÍA",
-    aliases: ["hcm", "hemoglobina corpuscular media"],
-  },
-  {
-    name: "CMHC",
-    category: "HEMATOLOGÍA",
-    aliases: ["cmhc", "concentracion media de hemoglobina corpuscular"],
-  },
-  {
-    name: "Neutrófilos",
-    category: "HEMATOLOGÍA",
-    aliases: ["neutrofilos", "neutrófilos"],
-  },
-  {
-    name: "Linfocitos",
-    category: "HEMATOLOGÍA",
-    aliases: ["linfocitos"],
-  },
-  {
-    name: "Monocitos",
-    category: "HEMATOLOGÍA",
-    aliases: ["monocitos"],
-  },
-  {
-    name: "Eosinófilos",
-    category: "HEMATOLOGÍA",
-    aliases: ["eosinofilos", "eosinófilos"],
-  },
-  {
-    name: "Basófilos",
-    category: "HEMATOLOGÍA",
-    aliases: ["basofilos", "basófilos"],
-  },
-  {
-    name: "Creatinina",
-    category: "RENAL",
-    aliases: ["creatinina"],
-  },
-  {
-    name: "Nitrógeno ureico (BUN)",
-    category: "RENAL",
-    aliases: ["nitrogeno ureico", "nitrógeno ureico", "bun"],
-  },
-  {
-    name: "Urea",
-    category: "RENAL",
-    aliases: ["urea"],
-  },
-  {
-    name: "Tasa de filtración glomerular (TFG)",
-    category: "RENAL",
-    aliases: ["tasa de filtracion glomerular", "tfg", "filtracion glomerular"],
-  },
-  {
-    name: "Bilirrubina total",
-    category: "HEPÁTICO",
-    aliases: ["bilirrubina total"],
-  },
-  {
-    name: "Bilirrubina directa",
-    category: "HEPÁTICO",
-    aliases: ["bilirrubina directa"],
-  },
-  {
-    name: "Bilirrubina indirecta",
-    category: "HEPÁTICO",
-    aliases: ["bilirrubina indirecta"],
-  },
-  {
-    name: "AST (TGO)",
-    category: "HEPÁTICO",
-    aliases: ["ast", "tgo", "ast tgo"],
-  },
-  {
-    name: "ALT (TGP)",
-    category: "HEPÁTICO",
-    aliases: ["alt", "tgp", "alt tgp"],
-  },
-  {
-    name: "Fosfatasa alcalina",
-    category: "HEPÁTICO",
-    aliases: ["fosfatasa alcalina"],
-  },
-  {
-    name: "GGT",
-    category: "HEPÁTICO",
-    aliases: ["ggt", "gamma glutamil transferasa"],
-  },
-  {
-    name: "Proteínas totales",
-    category: "HEPÁTICO",
-    aliases: ["proteinas totales", "proteínas totales"],
-  },
-  {
-    name: "Albúmina",
-    category: "HEPÁTICO",
-    aliases: ["albumina", "albúmina"],
-  },
-  {
-    name: "Globulinas",
-    category: "HEPÁTICO",
-    aliases: ["globulinas"],
-  },
-  {
-    name: "Sodio",
-    category: "ELECTROLITOS",
-    aliases: ["sodio"],
-  },
-  {
-    name: "Potasio",
-    category: "ELECTROLITOS",
-    aliases: ["potasio"],
-  },
-  {
-    name: "Cloro",
-    category: "ELECTROLITOS",
-    aliases: ["cloro"],
-  },
-  {
-    name: "Calcio",
-    category: "ELECTROLITOS",
-    aliases: ["calcio"],
-  },
-  {
-    name: "Fósforo",
-    category: "ELECTROLITOS",
-    aliases: ["fosforo", "fósforo"],
-  },
-  {
-    name: "Magnesio",
-    category: "ELECTROLITOS",
-    aliases: ["magnesio"],
-  },
-  {
-    name: "TSH",
-    category: "TIROIDES",
-    aliases: ["tsh"],
-  },
-  {
-    name: "T3 libre",
-    category: "TIROIDES",
-    aliases: ["t3 libre", "triiodotironina libre"],
-  },
-  {
-    name: "T4 libre",
-    category: "TIROIDES",
-    aliases: ["t4 libre", "tiroxina libre"],
-  },
-  {
-    name: "Vitamina D (25-OH)",
-    category: "VITAMINAS",
-    aliases: ["vitamina d", "vitamina d 25 oh", "25 oh vitamina d", "25-oh vitamina d"],
-  },
-  {
-    name: "Vitamina B12",
-    category: "VITAMINAS",
-    aliases: ["vitamina b12", "b12"],
-  },
-  {
-    name: "Ácido fólico",
-    category: "VITAMINAS",
-    aliases: ["acido folico", "ácido fólico", "folato"],
-  },
-  {
-    name: "Proteína C reactiva (PCR)",
-    category: "INFLAMACIÓN",
-    aliases: ["proteina c reactiva", "pcr", "proteina c reactiva pcr"],
-  },
-  {
-    name: "Velocidad de sedimentación (VSG)",
-    category: "INFLAMACIÓN",
-    aliases: ["velocidad de sedimentacion", "vsg", "velocidad de sedimentacion globular"],
-  },
-  {
-    name: "Ferritina",
-    category: "MARCADORES",
-    aliases: ["ferritina"],
-  },
-  {
-    name: "Hierro sérico",
-    category: "MARCADORES",
-    aliases: ["hierro serico", "hierro sérico"],
-  },
-  {
-    name: "Transferrina",
-    category: "MARCADORES",
-    aliases: ["transferrina"],
-  },
-];
-
 const VALUE_PATTERN = /(?<value>[+-]?\d+(?:[.,]\d+)?)/;
+const VALUE_PATTERN_GLOBAL = new RegExp(VALUE_PATTERN.source, "g");
 const RANGE_PATTERN =
   /(?:ref[:.]?\s*)?(?<reference>(?:<|>)\s*[+-]?\d+(?:[.,]\d+)?|\(?\s*[+-]?\d+(?:[.,]\d+)?\s*[-–]\s*[+-]?\d+(?:[.,]\d+)?\s*\)?)/i;
 
@@ -302,6 +26,9 @@ function normalizeText(value: string) {
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
     .replace(/[\u2010-\u2015]/g, "-")
+    .replace(/\(\s+/g, "(")
+    .replace(/\s+\)/g, ")")
+    .replace(/\s*-\s*/g, "-")
     .replace(/\s+/g, " ")
     .toLowerCase()
     .trim();
@@ -351,12 +78,16 @@ function parseRange(raw: string) {
   return { referenceMin, referenceMax };
 }
 
-function findCatalogEntry(rawName: string) {
+function findCatalogEntry(rawName: string, catalog: ReadonlyArray<LabAnalyteCatalogEntry>) {
   const name = normalizeText(rawName);
-  let bestMatch: CatalogEntry | null = null;
+  let bestMatch: LabAnalyteCatalogEntry | null = null;
   let bestScore = 0;
 
-  for (const entry of CATALOG) {
+  for (const entry of catalog) {
+    if (!entry.isActive) {
+      continue;
+    }
+
     const canonical = normalizeText(entry.name);
     const aliasMatches = entry.aliases.map((alias) => normalizeText(alias));
 
@@ -391,26 +122,91 @@ function findCatalogEntry(rawName: string) {
   return bestMatch;
 }
 
-function parseLine(line: string) {
+function findExactCatalogEntry(rawName: string, catalog: ReadonlyArray<LabAnalyteCatalogEntry>) {
+  const name = normalizeText(rawName);
+
+  for (const entry of catalog) {
+    if (!entry.isActive) {
+      continue;
+    }
+
+    if (normalizeText(entry.name) === name) {
+      return entry;
+    }
+
+    if (entry.aliases.some((alias) => normalizeText(alias) === name)) {
+      return entry;
+    }
+  }
+
+  return null;
+}
+
+function findValueCandidate(
+  normalizedLine: string,
+  catalog: ReadonlyArray<LabAnalyteCatalogEntry>,
+) {
+  const matches = Array.from(normalizedLine.matchAll(VALUE_PATTERN_GLOBAL));
+  const fallback = matches[0];
+
+  for (const match of matches) {
+    if (match.index === undefined) {
+      continue;
+    }
+
+    const rawName = normalizedLine
+      .slice(0, match.index)
+      .replace(/[:\- ]+$/g, "")
+      .trim();
+
+    if (!rawName) {
+      continue;
+    }
+
+    const entry = findExactCatalogEntry(rawName, catalog);
+    if (entry) {
+      return {
+        rawName,
+        valueMatch: match,
+        entry,
+      };
+    }
+  }
+
+  if (!fallback || fallback.index === undefined) {
+    return null;
+  }
+
+  const rawName = normalizedLine
+    .slice(0, fallback.index)
+    .replace(/[:\- ]+$/g, "")
+    .trim();
+
+  if (!rawName) {
+    return null;
+  }
+
+  return {
+    rawName,
+    valueMatch: fallback,
+    entry: null,
+  };
+}
+
+function parseLine(line: string, catalog: ReadonlyArray<LabAnalyteCatalogEntry>) {
   const normalizedLine = normalizeLine(line);
   if (!normalizedLine) {
     return null;
   }
 
-  const valueMatch = normalizedLine.match(VALUE_PATTERN);
-  if (!valueMatch?.groups?.value || valueMatch.index === undefined) {
+  const candidate = findValueCandidate(normalizedLine, catalog);
+  if (!candidate?.valueMatch.groups?.value || candidate.valueMatch.index === undefined) {
     return null;
   }
 
-  const rawName = normalizedLine
-    .slice(0, valueMatch.index)
-    .replace(/[:\- ]+$/g, "")
+  const rest = normalizedLine
+    .slice(candidate.valueMatch.index + candidate.valueMatch[0].length)
     .trim();
-  if (!rawName) {
-    return null;
-  }
-
-  const rest = normalizedLine.slice(valueMatch.index + valueMatch[0].length).trim();
   if (!rest) {
     return null;
   }
@@ -431,12 +227,12 @@ function parseLine(line: string) {
     return null;
   }
 
-  const value = parseNumber(valueMatch.groups.value);
+  const value = parseNumber(candidate.valueMatch.groups.value);
   if (Number.isNaN(value)) {
     return null;
   }
 
-  const entry = findCatalogEntry(rawName);
+  const entry = candidate.entry ?? findCatalogEntry(candidate.rawName, catalog);
   if (!entry) {
     return {
       recognized: false,
@@ -457,7 +253,11 @@ function parseLine(line: string) {
   } as const;
 }
 
-export function parseLabResults(text: string, examType: string): ParseOutput {
+export function parseLabResults(
+  text: string,
+  examType: string,
+  catalog: ReadonlyArray<LabAnalyteCatalogEntry> = DEFAULT_LAB_ANALYTES,
+): ParseOutput {
   void examType;
 
   const lines = text
@@ -469,7 +269,7 @@ export function parseLabResults(text: string, examType: string): ParseOutput {
   const unrecognized: string[] = [];
 
   for (const line of lines) {
-    const parsed = parseLine(line);
+    const parsed = parseLine(line, catalog);
 
     if (!parsed) {
       continue;

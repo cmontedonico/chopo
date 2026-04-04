@@ -46,8 +46,14 @@ export default defineSchema({
     scaleMax: v.optional(v.number()),
     icon: v.string(),
     isActive: v.boolean(),
-  })
-    .index("by_name", ["name"]),
+  }).index("by_name", ["name"]),
+
+  labAnalyteCatalog: defineTable({
+    name: v.string(),
+    category: v.string(),
+    aliases: v.array(v.string()),
+    isActive: v.boolean(),
+  }).index("by_name", ["name"]),
 
   manualMetrics: defineTable({
     patientId: v.string(),
