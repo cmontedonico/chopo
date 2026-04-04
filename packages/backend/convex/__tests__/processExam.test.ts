@@ -127,17 +127,13 @@ function createMockCtx({
 
   const actionCtx = {
     storage,
-    runQuery: vi.fn(async (ref: unknown, args: { examId: Id<"exams"> }) => {
-      if (ref === "exams.getForProcessing") {
-        return await (
-          getForProcessing as unknown as Handler<typeof args, Promise<MockExam | null>>
-        )._handler({ db }, args);
-      }
-
-      throw new Error("Unexpected query reference");
+    runQuery: vi.fn(async (_ref: unknown, args: { examId: Id<"exams"> }) => {
+      return await (
+        getForProcessing as unknown as Handler<typeof args, Promise<MockExam | null>>
+      )._handler({ db }, args);
     }),
-    runMutation: vi.fn(async (ref: unknown, args: any) => {
-      if (ref === "exams.markProcessingFailed") {
+    runMutation: vi.fn(async (_ref: unknown, args: any) => {
+      if ("errorMessage" in args) {
         return await (
           markProcessingFailed as unknown as Handler<
             { examId: Id<"exams">; errorMessage: string },
@@ -146,16 +142,7 @@ function createMockCtx({
         )._handler({ db }, args);
       }
 
-      if (ref === "exams.markProcessingCompleted") {
-        return await (
-          markProcessingCompleted as unknown as Handler<
-            { examId: Id<"exams"> },
-            Promise<MockExam | null>
-          >
-        )._handler({ db }, args);
-      }
-
-      if (ref === "testResults.createBatchInternal") {
+      if ("results" in args) {
         return await (
           createBatchInternal as unknown as Handler<
             {
@@ -170,6 +157,15 @@ function createMockCtx({
               }>;
             },
             Promise<Array<Id<"testResults">>>
+          >
+        )._handler({ db }, args);
+      }
+
+      if (Object.keys(args).length === 1 && "examId" in args) {
+        return await (
+          markProcessingCompleted as unknown as Handler<
+            { examId: Id<"exams"> },
+            Promise<MockExam | null>
           >
         )._handler({ db }, args);
       }
