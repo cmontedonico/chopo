@@ -8,19 +8,28 @@
  * @module
  */
 
+import type * as actions_processExam from "../actions/processExam.js";
 import type * as auth from "../auth.js";
 import type * as cache from "../cache.js";
 import type * as exams from "../exams.js";
 import type * as healthCheck from "../healthCheck.js";
 import type * as http from "../http.js";
+import type * as labAnalyteCatalog from "../labAnalyteCatalog.js";
+import type * as labAnalyteCatalogMigration from "../labAnalyteCatalogMigration.js";
 import type * as lib_access from "../lib/access.js";
+import type * as lib_auditLog from "../lib/auditLog.js";
 import type * as lib_authorization from "../lib/authorization.js";
+import type * as lib_labAnalyteCatalogData from "../lib/labAnalyteCatalogData.js";
+import type * as lib_labParser from "../lib/labParser.js";
+import type * as lib_pdfExtractor from "../lib/pdfExtractor.js";
+import type * as manualMetrics from "../manualMetrics.js";
 import type * as metricCatalog from "../metricCatalog.js";
 import type * as migrations from "../migrations.js";
 import type * as patients from "../patients.js";
 import type * as privateData from "../privateData.js";
 import type * as rateLimiter from "../rateLimiter.js";
 import type * as testResults from "../testResults.js";
+import type * as uploads from "../uploads.js";
 import type * as workflow from "../workflow.js";
 import type * as workpool from "../workpool.js";
 
@@ -31,19 +40,28 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "actions/processExam": typeof actions_processExam;
   auth: typeof auth;
   cache: typeof cache;
   exams: typeof exams;
   healthCheck: typeof healthCheck;
   http: typeof http;
+  labAnalyteCatalog: typeof labAnalyteCatalog;
+  labAnalyteCatalogMigration: typeof labAnalyteCatalogMigration;
   "lib/access": typeof lib_access;
+  "lib/auditLog": typeof lib_auditLog;
   "lib/authorization": typeof lib_authorization;
+  "lib/labAnalyteCatalogData": typeof lib_labAnalyteCatalogData;
+  "lib/labParser": typeof lib_labParser;
+  "lib/pdfExtractor": typeof lib_pdfExtractor;
+  manualMetrics: typeof manualMetrics;
   metricCatalog: typeof metricCatalog;
   migrations: typeof migrations;
   patients: typeof patients;
   privateData: typeof privateData;
   rateLimiter: typeof rateLimiter;
   testResults: typeof testResults;
+  uploads: typeof uploads;
   workflow: typeof workflow;
   workpool: typeof workpool;
 }>;

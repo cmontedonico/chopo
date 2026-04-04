@@ -1,4 +1,4 @@
-import { InvalidPDFException, PasswordException, PDFParse } from "pdf-parse";
+"use node";
 
 export type PdfExtractionResult = {
   text: string;
@@ -11,14 +11,6 @@ const UNREADABLE_PDF_ERROR = "No se pudo leer el PDF";
 const PASSWORD_PROTECTED_PDF_ERROR = "PDF protegido con contraseña";
 
 function toErrorMessage(error: unknown) {
-  if (error instanceof PasswordException) {
-    return PASSWORD_PROTECTED_PDF_ERROR;
-  }
-
-  if (error instanceof InvalidPDFException) {
-    return UNREADABLE_PDF_ERROR;
-  }
-
   if (!(error instanceof Error)) {
     return UNREADABLE_PDF_ERROR;
   }
@@ -41,9 +33,20 @@ export async function extractTextFromPdf(buffer: ArrayBuffer): Promise<PdfExtrac
     };
   }
 
-  let parser: PDFParse | undefined;
+  let parser:
+    | {
+        getText: () => Promise<{ text: string; total: number }>;
+        destroy?: () => Promise<void>;
+      }
+    | undefined;
 
   try {
+    const { PDFParse } = (await import("pdf-parse")) as {
+      PDFParse: new (options: { data: Uint8Array }) => {
+        getText: () => Promise<{ text: string; total: number }>;
+        destroy: () => Promise<void>;
+      };
+    };
     parser = new PDFParse({ data: new Uint8Array(buffer) });
     const result = await parser.getText();
 
@@ -58,6 +61,6 @@ export async function extractTextFromPdf(buffer: ArrayBuffer): Promise<PdfExtrac
       error: toErrorMessage(error),
     };
   } finally {
-    await parser?.destroy();
+    await parser?.destroy?.();
   }
 }

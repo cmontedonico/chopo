@@ -1,5 +1,12 @@
 import { v } from "convex/values";
-import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import {
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { requireAuth, requireRole, type AuthenticatedUser } from "./lib/authorization";
 
@@ -23,9 +30,7 @@ async function assertDoctorAssignedToPatient(
   const assignment = await ctx.db
     .query("doctorPatients")
     .withIndex("by_doctor_patient", (q) =>
-      q
-        .eq("doctorAuthUserId", doctorAuthUserId)
-        .eq("patientAuthUserId", patientAuthUserId),
+      q.eq("doctorAuthUserId", doctorAuthUserId).eq("patientAuthUserId", patientAuthUserId),
     )
     .unique();
 
@@ -34,11 +39,7 @@ async function assertDoctorAssignedToPatient(
   }
 }
 
-async function assertCanAccessPatient(
-  ctx: Ctx,
-  user: AuthenticatedUser,
-  patientId: string,
-) {
+async function assertCanAccessPatient(ctx: Ctx, user: AuthenticatedUser, patientId: string) {
   if (user.role === "super_admin" || user.id === patientId) {
     return;
   }
@@ -72,11 +73,7 @@ async function canReadExamWithoutLeakingExistence(
   }
 }
 
-async function assertCanManageOwnedExam(
-  ctx: Ctx,
-  user: AuthenticatedUser,
-  exam: Doc<"exams">,
-) {
+async function assertCanManageOwnedExam(ctx: Ctx, user: AuthenticatedUser, exam: Doc<"exams">) {
   if (user.role === "super_admin" || user.id === exam.patientId) {
     return;
   }
@@ -206,7 +203,9 @@ export const update = mutation({
         v.literal("pending"),
         v.literal("processing"),
         v.literal("parsed"),
+        v.literal("completed"),
         v.literal("error"),
+        v.literal("failed"),
       ),
     ),
   },
@@ -290,6 +289,66 @@ export const softDelete = mutation({
       action: "delete",
       tableName: "exams",
       recordId: args.examId,
+    });
+  },
+});
+
+export const getForProcessing = internalQuery({
+  args: {
+    examId: v.id("exams"),
+  },
+  handler: async (ctx, args) => {
+    const exam = await ctx.db.get(args.examId);
+
+    if (!exam || !isActiveExam(exam)) {
+      return null;
+    }
+
+    return exam;
+  },
+});
+
+async function updateProcessingOutcome(
+  ctx: MutationCtx,
+  examId: Id<"exams">,
+  patch: Partial<Pick<Doc<"exams">, "status" | "errorMessage" | "updatedAt">>,
+) {
+  const exam = await ctx.db.get(examId);
+
+  if (!exam || !isActiveExam(exam)) {
+    return null;
+  }
+
+  const now = Date.now();
+  await ctx.db.patch(examId, {
+    ...patch,
+    updatedAt: now,
+  });
+
+  return await ctx.db.get(examId);
+}
+
+export const markProcessingFailed = internalMutation({
+  args: {
+    examId: v.id("exams"),
+    errorMessage: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await updateProcessingOutcome(ctx, args.examId, {
+      status: "failed",
+      errorMessage: args.errorMessage,
+    });
+  },
+});
+
+export const markProcessingCompleted = internalMutation({
+  args: {
+    examId: v.id("exams"),
+  },
+  handler: async (ctx, args) => {
+    return await updateProcessingOutcome(ctx, args.examId, {
+      status: "completed",
+      errorMessage: undefined,
     });
   },
 });
