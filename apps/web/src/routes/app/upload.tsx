@@ -260,13 +260,13 @@ export function UploadPageView({
     event.stopPropagation();
     setDragActive(false);
     if (event.dataTransfer.files?.length) {
-      setFiles(Array.from(event.dataTransfer.files));
+      setFiles([event.dataTransfer.files[0]]);
     }
   }
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     if (event.target.files?.length) {
-      setFiles(Array.from(event.target.files));
+      setFiles([event.target.files[0]]);
     }
   }
 
@@ -323,7 +323,7 @@ export function UploadPageView({
               <Upload className="h-4 w-4" />
               Nuevo estudio
             </CardTitle>
-            <CardDescription>Arrastra tus archivos o haz clic para seleccionar</CardDescription>
+            <CardDescription>Arrastra tu archivo o haz clic para seleccionar</CardDescription>
           </CardHeader>
           <CardContent>
             {paywallMessage ? (
@@ -358,15 +358,12 @@ export function UploadPageView({
               >
                 <Upload className="mb-2 h-8 w-8 text-muted-foreground" />
                 <p className="text-sm font-medium">
-                  {files.length > 0
-                    ? `${files.length} archivo(s) seleccionado(s)`
-                    : "Arrastra archivos aquí"}
+                  {files.length > 0 ? files[0]?.name : "Arrastra tu archivo aquí"}
                 </p>
                 <p className="text-xs text-muted-foreground">PDF, JPG, PNG hasta 10MB</p>
                 <Input
                   id="file-upload"
                   type="file"
-                  multiple
                   accept=".pdf,.jpg,.jpeg,.png"
                   className="hidden"
                   onChange={handleFileChange}
