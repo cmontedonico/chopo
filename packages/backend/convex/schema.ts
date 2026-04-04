@@ -10,6 +10,7 @@ export default defineSchema({
     fileId: v.id("_storage"),
     fileName: v.string(),
     status: v.string(),
+    errorMessage: v.optional(v.string()),
     notes: v.optional(v.string()),
     deletedAt: v.optional(v.number()),
     createdAt: v.number(),

@@ -1,5 +1,11 @@
 import { v } from "convex/values";
-import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import {
+  internalMutation,
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { requireAuth, type AuthenticatedUser } from "./lib/authorization";
 
@@ -30,6 +36,28 @@ const VALID_CATEGORIES = new Set<ResultCategory>([
   "Inflamación",
   "Marcadores",
 ]);
+
+const CATEGORY_LOOKUP = new Map(
+  [...VALID_CATEGORIES].map((category) => [normalizeCategoryText(category), category]),
+);
+
+function normalizeCategoryText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .trim();
+}
+
+function resolveCategory(category: string): ResultCategory {
+  const normalized = CATEGORY_LOOKUP.get(normalizeCategoryText(category));
+
+  if (!normalized) {
+    throw new Error(`Invalid category: ${category}`);
+  }
+
+  return normalized;
+}
 
 function getStatus(value: number, referenceMin: number, referenceMax: number): ResultStatus {
   if (value < referenceMin) return "low";
@@ -70,9 +98,7 @@ async function assertDoctorAssignedToPatient(
   const assignment = await ctx.db
     .query("doctorPatients")
     .withIndex("by_doctor_patient", (q) =>
-      q
-        .eq("doctorAuthUserId", doctorAuthUserId)
-        .eq("patientAuthUserId", patientAuthUserId),
+      q.eq("doctorAuthUserId", doctorAuthUserId).eq("patientAuthUserId", patientAuthUserId),
     )
     .unique();
 
@@ -81,11 +107,7 @@ async function assertDoctorAssignedToPatient(
   }
 }
 
-async function assertCanAccessPatient(
-  ctx: Ctx,
-  user: AuthenticatedUser,
-  patientId: string,
-) {
+async function assertCanAccessPatient(ctx: Ctx, user: AuthenticatedUser, patientId: string) {
   if (user.role === "super_admin" || user.id === patientId) {
     return;
   }
@@ -115,10 +137,7 @@ async function canReadPatientWithoutLeakingExistence(
   }
 }
 
-async function assertCanManageOwnedResult(
-  user: AuthenticatedUser,
-  result: Doc<"testResults">,
-) {
+async function assertCanManageOwnedResult(user: AuthenticatedUser, result: Doc<"testResults">) {
   if (user.role === "super_admin" || user.id === result.patientId) {
     return;
   }
@@ -206,39 +225,86 @@ export const createBatch = mutation({
     const user = await requireAuth(ctx);
     const exam = await getExamOrThrow(ctx, args.examId);
     await assertCanAccessPatient(ctx, user, exam.patientId);
-    const now = Date.now();
-    const createdIds: Array<Id<"testResults">> = [];
+    return await createBatchForExam(ctx, {
+      actorUserId: user.id,
+      exam,
+      results: args.results,
+    });
+  },
+});
 
-    for (const result of args.results) {
-      if (!VALID_CATEGORIES.has(result.category as ResultCategory)) {
-        throw new Error(`Invalid category: ${result.category}`);
-      }
+async function createBatchForExam(
+  ctx: MutationCtx,
+  args: {
+    actorUserId: string;
+    exam: Doc<"exams">;
+    results: Array<{
+      name: string;
+      value: number;
+      unit: string;
+      referenceMin: number;
+      referenceMax: number;
+      category: string;
+    }>;
+  },
+) {
+  const now = Date.now();
+  const createdIds: Array<Id<"testResults">> = [];
 
-      const status = getStatus(result.value, result.referenceMin, result.referenceMax);
-      const resultId = await ctx.db.insert("testResults", {
-        examId: args.examId,
-        patientId: exam.patientId,
-        name: result.name,
-        value: result.value,
-        unit: result.unit,
-        referenceMin: result.referenceMin,
-        referenceMax: result.referenceMax,
-        status,
-        category: result.category,
-        createdAt: now,
-      });
+  for (const result of args.results) {
+    const category = resolveCategory(result.category);
+    const status = getStatus(result.value, result.referenceMin, result.referenceMax);
+    const resultId = await ctx.db.insert("testResults", {
+      examId: args.exam._id,
+      patientId: args.exam.patientId,
+      name: result.name,
+      value: result.value,
+      unit: result.unit,
+      referenceMin: result.referenceMin,
+      referenceMax: result.referenceMax,
+      status,
+      category,
+      createdAt: now,
+    });
 
-      createdIds.push(resultId);
+    createdIds.push(resultId);
 
-      await logAudit(ctx, {
-        userId: user.id,
-        action: "create",
-        tableName: "testResults",
-        recordId: resultId,
-      });
+    await logAudit(ctx, {
+      userId: args.actorUserId,
+      action: "create",
+      tableName: "testResults",
+      recordId: resultId,
+    });
+  }
+
+  return createdIds;
+}
+
+export const createBatchInternal = internalMutation({
+  args: {
+    examId: v.id("exams"),
+    results: v.array(
+      v.object({
+        name: v.string(),
+        value: v.number(),
+        unit: v.string(),
+        referenceMin: v.number(),
+        referenceMax: v.number(),
+        category: v.string(),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const exam = await getExamOrThrow(ctx, args.examId);
+    if (exam.deletedAt !== undefined) {
+      return [];
     }
 
-    return createdIds;
+    return await createBatchForExam(ctx, {
+      actorUserId: exam.patientId,
+      exam,
+      results: args.results,
+    });
   },
 });
 
@@ -259,7 +325,9 @@ export const update = mutation({
 
     await assertCanManageOwnedResultOrNotFound(user, result);
 
-    const updates: Partial<Pick<Doc<"testResults">, "value" | "referenceMin" | "referenceMax" | "status">> = {};
+    const updates: Partial<
+      Pick<Doc<"testResults">, "value" | "referenceMin" | "referenceMax" | "status">
+    > = {};
     const auditEntries: Array<{
       fieldName: string;
       oldValue: string;
@@ -415,9 +483,7 @@ export const getByPatientAndName = query({
 
     const results = await ctx.db
       .query("testResults")
-      .withIndex("by_patient_name", (q) =>
-        q.eq("patientId", patientId).eq("name", args.testName),
-      )
+      .withIndex("by_patient_name", (q) => q.eq("patientId", patientId).eq("name", args.testName))
       .collect();
 
     return sortByCreatedAt(activeResults(results));
@@ -440,9 +506,7 @@ export const getByCategory = query({
       .withIndex("by_category", (q) => q.eq("category", args.category))
       .collect();
 
-    return sortByName(
-      activeResults(results).filter((result) => result.patientId === patientId),
-    );
+    return sortByName(activeResults(results).filter((result) => result.patientId === patientId));
   },
 });
 
