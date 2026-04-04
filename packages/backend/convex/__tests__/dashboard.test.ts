@@ -1,20 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Doc, Id } from "../_generated/dataModel";
-
-vi.mock("../lib/authorization", () => ({
-  requireAuth: vi.fn(),
-  requireRole: vi.fn(),
-}));
-
-import * as auth from "../lib/authorization";
+import { authComponent } from "../auth";
 import { getKeyMetrics, getLatestResults, getSummary, getTestHistory } from "../dashboard";
 
 type Role = "user" | "doctor" | "super_admin";
 
-type MockUser = {
-  id: string;
-  name: string;
-  email: string;
+type MockUser = NonNullable<Awaited<ReturnType<typeof authComponent.safeGetAuthUser>>> & {
   role: Role;
   banned: boolean;
 };
@@ -28,9 +19,15 @@ type Handler<TArgs, TResult> = {
 
 function makeUser(overrides: Partial<MockUser> = {}): MockUser {
   return {
-    id: "patient_1",
+    _id: "patient_1" as MockUser["_id"],
+    _creationTime: 0,
+    createdAt: Date.parse("2024-01-01T00:00:00.000Z"),
+    updatedAt: Date.parse("2024-01-01T00:00:00.000Z"),
     name: "Test User",
     email: "user@example.com",
+    emailVerified: true,
+    image: null,
+    userId: null,
     role: "user",
     banned: false,
     ...overrides,
@@ -161,7 +158,7 @@ function createMockCtx({
   return { ctx: { db }, examStore, resultStore, doctorPatientStore };
 }
 
-const mockedRequireAuth = vi.mocked(auth.requireAuth);
+const mockedSafeGetAuthUser = vi.spyOn(authComponent, "safeGetAuthUser");
 
 // Safe because Convex attaches `_handler` at runtime and tests only narrow the export to call that internal handler.
 const getSummaryHandler = getSummary as unknown as Handler<
@@ -196,7 +193,7 @@ const getLatestResultsHandler = getLatestResults as unknown as Handler<
 describe("convex/dashboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockedRequireAuth.mockResolvedValue(makeUser());
+    mockedSafeGetAuthUser.mockResolvedValue(makeUser());
   });
 
   it("getSummary counts normal, abnormal, and critical results from the latest completed exam only", async () => {
