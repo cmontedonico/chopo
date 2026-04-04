@@ -21,11 +21,13 @@
     "better-auth": "catalog:",
     "convex": "catalog:",
     "dotenv": "catalog:",
+    "pdf-parse": "^2.4.5",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@chopo-v1/config": "workspace:*",
     "@types/node": "^24.3.0",
+    "@types/pdf-parse": "^1.1.5",
     "typescript": "^5",
     "vitest": "^3.2.4"
   }

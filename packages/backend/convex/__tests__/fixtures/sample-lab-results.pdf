@@ -1,0 +1,40 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length 128 >>
+stream
+BT
+/F1 12 Tf
+72 720 Td
+(Glucosa 92 mg/dL 70 - 100) Tj
+0 -18 Td
+(Colesterol total 215 mg/dL < 200) Tj
+0 -18 Td
+(Hemoglobina 14.5 g/dL 13.5 - 17.5) Tj
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000010 00000 n 
+0000000063 00000 n 
+0000000122 00000 n 
+0000000248 00000 n 
+0000000318 00000 n 
+trailer
+<< /Root 1 0 R /Size 6 >>
+startxref
+496
+%%EOF
