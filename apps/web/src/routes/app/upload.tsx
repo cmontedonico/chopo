@@ -1,79 +1,307 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useMutation, useQuery } from "convex/react";
+import type { Id } from "@chopo-v1/backend/convex/_generated/dataModel";
+import { CheckCircle2, FileText, Loader2, Upload, XCircle } from "lucide-react";
+import { useState, type ChangeEvent, type DragEvent, type FormEvent } from "react";
+import { toast } from "sonner";
+
+import { api } from "@chopo-v1/backend/convex/_generated/api";
 import { Badge } from "@chopo-v1/ui/components/badge";
 import { Button } from "@chopo-v1/ui/components/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@chopo-v1/ui/components/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@chopo-v1/ui/components/card";
 import { Input } from "@chopo-v1/ui/components/input";
 import { Label } from "@chopo-v1/ui/components/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@chopo-v1/ui/components/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@chopo-v1/ui/components/select";
 import { Separator } from "@chopo-v1/ui/components/separator";
 import { SidebarTrigger } from "@chopo-v1/ui/components/sidebar";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@chopo-v1/ui/components/table";
-import { Textarea } from "@chopo-v1/ui/components/textarea";
+import { Skeleton } from "@chopo-v1/ui/components/skeleton";
 import {
-  CheckCircle,
-  Clock,
-  FileText,
-  Upload,
-  XCircle,
-} from "lucide-react";
-import { useState } from "react";
-
-import { EXAM_RECORDS, type ExamRecord } from "@/lib/mock-data";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@chopo-v1/ui/components/table";
+import { Textarea } from "@chopo-v1/ui/components/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@chopo-v1/ui/components/tooltip";
 
 export const Route = createFileRoute("/app/upload")({
   component: UploadPage,
 });
 
-const STATUS_ICON: Record<ExamRecord["status"], typeof CheckCircle> = {
-  processed: CheckCircle,
-  pending: Clock,
-  error: XCircle,
+type ExamRecord = {
+  _id: string;
+  labName: string;
+  examType: string;
+  examDate: number;
+  status: string;
+  fileName: string;
+  errorMessage?: string | null;
 };
 
-const STATUS_LABEL: Record<ExamRecord["status"], string> = {
-  processed: "Procesado",
-  pending: "Pendiente",
-  error: "Error",
+type UploadExamArgs = {
+  file: File;
+  labName: string;
+  examType: string;
+  notes?: string;
+  generateUploadUrl: () => Promise<string>;
+  createExam: (args: {
+    storageId: Id<"_storage">;
+    labName: string;
+    examType: string;
+    examDate: number;
+    fileName: string;
+    notes?: string;
+  }) => Promise<unknown>;
+  fetchImpl?: typeof fetch;
 };
 
-function UploadPage() {
+const LAB_OPTIONS = [
+  { value: "Chopo Sucursal Centro", label: "Chopo Sucursal Centro" },
+  { value: "Chopo Sucursal Polanco", label: "Chopo Sucursal Polanco" },
+  { value: "Chopo Sucursal Santa Fe", label: "Chopo Sucursal Santa Fe" },
+  { value: "Chopo Sucursal Condesa", label: "Chopo Sucursal Condesa" },
+  { value: "Otro laboratorio", label: "Otro laboratorio" },
+];
+
+const EXAM_TYPE_OPTIONS = [
+  { value: "Química sanguínea 40 elementos", label: "Química sanguínea 40 elementos" },
+  { value: "Biometría hemática", label: "Biometría hemática" },
+  { value: "Perfil lipídico", label: "Perfil lipídico" },
+  { value: "Panel tiroideo", label: "Panel tiroideo" },
+  { value: "Perfil hepático", label: "Perfil hepático" },
+  { value: "Perfil renal", label: "Perfil renal" },
+  { value: "Otro", label: "Otro" },
+];
+
+const STATUS_META: Record<
+  string,
+  {
+    label: string;
+    icon: typeof CheckCircle2;
+    variant: "secondary" | "outline" | "destructive";
+    className: string;
+  }
+> = {
+  processing: {
+    label: "Procesando...",
+    icon: Loader2,
+    variant: "outline",
+    className: "gap-1 text-muted-foreground",
+  },
+  completed: {
+    label: "Completado",
+    icon: CheckCircle2,
+    variant: "secondary",
+    className: "gap-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  },
+  failed: {
+    label: "Error",
+    icon: XCircle,
+    variant: "destructive",
+    className: "gap-1",
+  },
+};
+
+const DATE_FORMATTER = new Intl.DateTimeFormat("es-MX", {
+  dateStyle: "medium",
+});
+
+export async function submitUploadToBackend({
+  file,
+  labName,
+  examType,
+  notes,
+  generateUploadUrl,
+  createExam,
+  fetchImpl = fetch,
+}: UploadExamArgs) {
+  const uploadUrl = await generateUploadUrl();
+  const response = await fetchImpl(uploadUrl, {
+    method: "POST",
+    headers: { "Content-Type": file.type },
+    body: file,
+  });
+
+  if (!response.ok) {
+    throw new Error(`No se pudo subir el archivo: ${response.status} ${response.statusText}`);
+  }
+
+  const { storageId } = (await response.json()) as { storageId?: Id<"_storage"> | string };
+  if (!storageId) {
+    throw new Error("No se recibió storageId desde Convex.");
+  }
+
+  await createExam({
+    storageId: storageId as Id<"_storage">,
+    labName,
+    examType,
+    examDate: Date.now(),
+    fileName: file.name,
+    notes: notes || undefined,
+  });
+}
+
+function isPaywallError(message: string) {
+  const normalized = message.toLowerCase();
+  return normalized.includes("límite de estudios") || normalized.includes("actualiza tu plan");
+}
+
+function formatExamDate(examDate: number) {
+  return DATE_FORMATTER.format(new Date(examDate));
+}
+
+function StatusBadge({ exam }: { exam: ExamRecord }) {
+  const meta = STATUS_META[exam.status];
+
+  if (!meta) {
+    return <Badge variant="outline">{exam.status}</Badge>;
+  }
+
+  const Icon = meta.icon;
+
+  if (exam.status === "failed") {
+    return (
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Badge variant={meta.variant} className={meta.className}>
+              <Icon className="h-3 w-3" />
+              {meta.label}
+            </Badge>
+          }
+        />
+        <TooltipContent side="top" align="center">
+          {exam.errorMessage || "Hubo un error al procesar este estudio."}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <Badge variant={meta.variant} className={meta.className}>
+      <Icon className={meta.icon === Loader2 ? "h-3 w-3 animate-spin" : "h-3 w-3"} />
+      {meta.label}
+    </Badge>
+  );
+}
+
+function LoadingRows() {
+  return (
+    <>
+      {Array.from({ length: 4 }).map((_, index) => (
+        <TableRow key={index}>
+          <TableCell>
+            <Skeleton className="h-4 w-24" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-4 w-36" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-4 w-40" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-4 w-32" />
+          </TableCell>
+          <TableCell className="text-center">
+            <Skeleton className="mx-auto h-5 w-24" />
+          </TableCell>
+        </TableRow>
+      ))}
+    </>
+  );
+}
+
+export function UploadPageView({
+  exams,
+  onUpload,
+}: {
+  exams: ExamRecord[] | undefined;
+  onUpload: (args: {
+    file: File;
+    labName: string;
+    examType: string;
+    notes?: string;
+  }) => Promise<void>;
+}) {
   const [dragActive, setDragActive] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
-  const [lab, setLab] = useState("");
+  const [labName, setLabName] = useState("");
   const [examType, setExamType] = useState("");
   const [notes, setNotes] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [paywallMessage, setPaywallMessage] = useState<string | null>(null);
 
-  function handleDrag(e: React.DragEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
+  function handleDrag(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.type === "dragenter" || event.type === "dragover") {
       setDragActive(true);
-    } else if (e.type === "dragleave") {
+    } else if (event.type === "dragleave") {
       setDragActive(false);
     }
   }
 
-  function handleDrop(e: React.DragEvent) {
-    e.preventDefault();
-    e.stopPropagation();
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    event.stopPropagation();
     setDragActive(false);
-    if (e.dataTransfer.files?.length) {
-      setFiles(Array.from(e.dataTransfer.files));
+    if (event.dataTransfer.files?.length) {
+      setFiles([event.dataTransfer.files[0]]);
     }
   }
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    if (e.target.files?.length) {
-      setFiles(Array.from(e.target.files));
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    if (event.target.files?.length) {
+      setFiles([event.target.files[0]]);
     }
   }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setFiles([]);
-    setLab("");
-    setExamType("");
-    setNotes("");
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const file = files[0];
+    if (!file || !labName || !examType || isUploading) {
+      return;
+    }
+
+    setIsUploading(true);
+    setPaywallMessage(null);
+
+    try {
+      await onUpload({
+        file,
+        labName,
+        examType,
+        notes: notes.trim() || undefined,
+      });
+      toast.success("Estudio subido. Procesando resultados...");
+      setFiles([]);
+      setLabName("");
+      setExamType("");
+      setNotes("");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo subir el estudio.";
+      toast.error(message);
+      if (isPaywallError(message)) {
+        setPaywallMessage(message);
+      }
+    } finally {
+      setIsUploading(false);
+    }
   }
 
   return (
@@ -95,9 +323,19 @@ function UploadPage() {
               <Upload className="h-4 w-4" />
               Nuevo estudio
             </CardTitle>
-            <CardDescription>Arrastra tus archivos o haz clic para seleccionar</CardDescription>
+            <CardDescription>Arrastra tu archivo o haz clic para seleccionar</CardDescription>
           </CardHeader>
           <CardContent>
+            {paywallMessage ? (
+              <div className="mb-4 rounded-none border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive">
+                <p className="font-medium">Límite alcanzado</p>
+                <p className="mt-1">{paywallMessage}</p>
+                <a href="/app/billing" className="mt-2 inline-flex underline underline-offset-4">
+                  Ir a facturación
+                </a>
+              </div>
+            ) : null}
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div
                 className={`relative flex min-h-[160px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 transition-colors ${
@@ -110,8 +348,8 @@ function UploadPage() {
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
                 onClick={() => document.getElementById("file-upload")?.click()}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
                     document.getElementById("file-upload")?.click();
                   }
                 }}
@@ -120,22 +358,19 @@ function UploadPage() {
               >
                 <Upload className="mb-2 h-8 w-8 text-muted-foreground" />
                 <p className="text-sm font-medium">
-                  {files.length > 0
-                    ? `${files.length} archivo(s) seleccionado(s)`
-                    : "Arrastra archivos aquí"}
+                  {files.length > 0 ? files[0]?.name : "Arrastra tu archivo aquí"}
                 </p>
                 <p className="text-xs text-muted-foreground">PDF, JPG, PNG hasta 10MB</p>
                 <Input
                   id="file-upload"
                   type="file"
-                  multiple
                   accept=".pdf,.jpg,.jpeg,.png"
                   className="hidden"
                   onChange={handleFileChange}
                 />
               </div>
 
-              {files.length > 0 && (
+              {files.length > 0 ? (
                 <div className="space-y-1">
                   {files.map((file) => (
                     <div key={file.name} className="flex items-center gap-2 text-sm">
@@ -147,38 +382,36 @@ function UploadPage() {
                     </div>
                   ))}
                 </div>
-              )}
+              ) : null}
 
               <div className="space-y-2">
                 <Label htmlFor="lab">Laboratorio</Label>
-                <Select value={lab} onValueChange={(v) => setLab(v ?? "")}>
+                <Select value={labName} onValueChange={(value) => setLabName(value ?? "")}>
                   <SelectTrigger id="lab">
                     <SelectValue placeholder="Selecciona el laboratorio" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="chopo-centro">Chopo Sucursal Centro</SelectItem>
-                    <SelectItem value="chopo-polanco">Chopo Sucursal Polanco</SelectItem>
-                    <SelectItem value="chopo-santa-fe">Chopo Sucursal Santa Fe</SelectItem>
-                    <SelectItem value="chopo-condesa">Chopo Sucursal Condesa</SelectItem>
-                    <SelectItem value="otro">Otro laboratorio</SelectItem>
+                    {LAB_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="exam-type">Tipo de estudio</Label>
-                <Select value={examType} onValueChange={(v) => setExamType(v ?? "")}>
+                <Select value={examType} onValueChange={(value) => setExamType(value ?? "")}>
                   <SelectTrigger id="exam-type">
                     <SelectValue placeholder="Selecciona el tipo de estudio" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="quimica-40">Química sanguínea 40 elementos</SelectItem>
-                    <SelectItem value="biometria">Biometría hemática</SelectItem>
-                    <SelectItem value="perfil-lipidico">Perfil lipídico</SelectItem>
-                    <SelectItem value="panel-tiroideo">Panel tiroideo</SelectItem>
-                    <SelectItem value="perfil-hepatico">Perfil hepático</SelectItem>
-                    <SelectItem value="perfil-renal">Perfil renal</SelectItem>
-                    <SelectItem value="otro">Otro</SelectItem>
+                    {EXAM_TYPE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -189,14 +422,22 @@ function UploadPage() {
                   id="notes"
                   placeholder="Agrega comentarios sobre este estudio..."
                   value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
+                  onChange={(event) => setNotes(event.target.value)}
                   rows={3}
                 />
               </div>
 
-              <Button type="submit" className="w-full" disabled={files.length === 0}>
-                <Upload className="mr-2 h-4 w-4" />
-                Subir estudio
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={files.length === 0 || !labName || !examType || isUploading}
+              >
+                {isUploading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="mr-2 h-4 w-4" />
+                )}
+                {isUploading ? "Subiendo..." : "Subir estudio"}
               </Button>
             </form>
           </CardContent>
@@ -211,39 +452,67 @@ function UploadPage() {
             <CardDescription>Estudios subidos anteriormente</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Laboratorio</TableHead>
-                  <TableHead className="text-center">Archivos</TableHead>
-                  <TableHead className="text-center">Estado</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {EXAM_RECORDS.map((record) => {
-                  const StatusIcon = STATUS_ICON[record.status];
-                  return (
-                    <TableRow key={record.id}>
-                      <TableCell className="font-mono text-sm">{record.date}</TableCell>
-                      <TableCell className="max-w-[200px] truncate text-sm">{record.type}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{record.lab}</TableCell>
-                      <TableCell className="text-center">{record.fileCount}</TableCell>
+            {exams === undefined ? (
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">Cargando historial de estudios...</p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Laboratorio</TableHead>
+                      <TableHead>Archivo</TableHead>
+                      <TableHead className="text-center">Estado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <LoadingRows />
+                  </TableBody>
+                </Table>
+              </div>
+            ) : exams.length === 0 ? (
+              <div className="rounded-none border border-dashed border-muted-foreground/30 p-6 text-center">
+                <p className="text-sm font-medium">
+                  Aún no has subido estudios. ¡Sube tu primer resultado!
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Tu historial aparecerá aquí en cuanto subas tu primer PDF.
+                </p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Laboratorio</TableHead>
+                    <TableHead>Archivo</TableHead>
+                    <TableHead className="text-center">Estado</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {exams.map((exam) => (
+                    <TableRow key={exam._id}>
+                      <TableCell className="font-mono text-sm">
+                        {formatExamDate(exam.examDate)}
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate text-sm">
+                        {exam.examType}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {exam.labName}
+                      </TableCell>
+                      <TableCell className="max-w-[180px] truncate text-sm">
+                        {exam.fileName}
+                      </TableCell>
                       <TableCell className="text-center">
-                        <Badge
-                          variant={record.status === "processed" ? "secondary" : record.status === "error" ? "destructive" : "outline"}
-                          className="gap-1"
-                        >
-                          <StatusIcon className="h-3 w-3" />
-                          {STATUS_LABEL[record.status]}
-                        </Badge>
+                        <StatusBadge exam={exam} />
                       </TableCell>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -288,4 +557,33 @@ function UploadPage() {
       </Card>
     </div>
   );
+}
+
+function UploadPage() {
+  const exams = useQuery(api.exams.listByPatient, {});
+  const generateUploadUrl = useMutation(api.uploads.generateUploadUrl);
+  const createExam = useMutation(api.uploads.createExamFromUpload);
+
+  async function handleUpload({
+    file,
+    labName,
+    examType,
+    notes,
+  }: {
+    file: File;
+    labName: string;
+    examType: string;
+    notes?: string;
+  }) {
+    await submitUploadToBackend({
+      file,
+      labName,
+      examType,
+      notes,
+      generateUploadUrl: () => generateUploadUrl({}),
+      createExam: (args) => createExam(args),
+    });
+  }
+
+  return <UploadPageView exams={exams as ExamRecord[] | undefined} onUpload={handleUpload} />;
 }
