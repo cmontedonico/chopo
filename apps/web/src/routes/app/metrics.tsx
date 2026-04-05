@@ -704,6 +704,11 @@ function QuickAddDialog({
                   });
 
                   toast.success("Métrica registrada");
+                  setValue(
+                    selectedCatalog.inputType === "scale"
+                      ? String(Math.ceil((selectedCatalog.scaleMax ?? 10) / 2))
+                      : "",
+                  );
                   setOpen(false);
                 } catch {
                   toast.error("No se pudo guardar la métrica");
