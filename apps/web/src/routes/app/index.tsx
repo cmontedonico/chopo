@@ -779,7 +779,22 @@ export function DashboardPageView({
   comparisonResultsB: TestResultRecord[] | undefined;
   defaultTab?: "table" | "category" | "comparison";
 }) {
-  const titleSuffix = summary?.totalTests ? `${summary.totalTests} elementos` : "sin resultados";
+  const viewCategories = useMemo(() => {
+    if (!results) {
+      return categories;
+    }
+
+    return Array.from(new Set(results.map((result) => result.category))).sort((left, right) =>
+      left.localeCompare(right),
+    );
+  }, [categories, results]);
+
+  const titleSuffix =
+    summary === undefined
+      ? "cargando..."
+      : summary.totalTests
+        ? `${summary.totalTests} elementos`
+        : "sin resultados";
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -838,7 +853,7 @@ export function DashboardPageView({
           </TabsContent>
 
           <TabsContent value="category" className="mt-4">
-            <CategoryGrid categories={categories} results={results} />
+            <CategoryGrid categories={viewCategories} results={results} />
           </TabsContent>
 
           <TabsContent value="comparison" className="mt-4">

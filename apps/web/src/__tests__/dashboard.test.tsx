@@ -63,6 +63,7 @@ describe("dashboard page", () => {
 
     expect(html.includes('data-slot="skeleton"')).toBe(true);
     expect(html.includes("Dashboard")).toBe(true);
+    expect(html.includes("cargando...")).toBe(true);
   });
 
   test("renders empty states when there are no results", () => {
@@ -141,5 +142,35 @@ describe("dashboard page", () => {
     expect(html.includes("Estudio A")).toBe(true);
     expect(html.includes("Glucosa")).toBe(true);
     expect(html.includes("Hemoglobina")).toBe(true);
+  });
+
+  test("category tab only renders categories present in filtered results", () => {
+    const html = renderDashboard({
+      summary: {
+        totalTests: 1,
+        normalCount: 0,
+        abnormalCount: 1,
+        criticalCount: 0,
+        lastExamDate: Date.now(),
+      },
+      keyMetrics: [{ name: "Glucosa", value: 102, referenceMax: 100, unit: "mg/dL" }],
+      history: [{ date: "2024-02", value: 102 }],
+      availableTests: ["Glucosa"],
+      results: [baseResults[0]],
+      categories: ["Metabolismo", "Hematología"],
+      selectedCategory: "Metabolismo",
+      exams: [
+        {
+          _id: "exam_1" as Id<"exams">,
+          examType: "Química sanguínea",
+          examDate: Date.now(),
+          status: "completed",
+        },
+      ],
+      defaultTab: "category",
+    });
+
+    expect(html.includes("Metabolismo")).toBe(true);
+    expect(html.includes("0/0 normal")).toBe(false);
   });
 });
