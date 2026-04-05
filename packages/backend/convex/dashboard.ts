@@ -74,18 +74,30 @@ async function requirePatientAccess(ctx: Parameters<typeof requireAuth>[0], pati
   throw new Error("Forbidden: insufficient permissions");
 }
 
-async function getPatientExams(ctx: Parameters<typeof requireAuth>[0], patientId: string) {
+async function getPatientExams(
+  ctx: Parameters<typeof requireAuth>[0],
+  patientId: string,
+  options?: { completedOnly?: boolean },
+) {
   const exams = await ctx.db
     .query("exams")
     .withIndex("by_patient_date", (q) => q.eq("patientId", patientId))
     .collect();
 
-  return exams.filter(isActiveRecord);
+  const activeExams = exams.filter(isActiveRecord);
+
+  if (!options?.completedOnly) {
+    return activeExams;
+  }
+
+  return activeExams.filter((exam) => exam.status === "completed");
 }
 
 async function getLatestCompletedExam(ctx: Parameters<typeof requireAuth>[0], patientId: string) {
-  const exams = await getPatientExams(ctx, patientId);
-  const sortedExams = sortExamsByDateDesc(exams).filter((exam) => exam.status === "completed");
+  const exams = await getPatientExams(ctx, patientId, {
+    completedOnly: true,
+  });
+  const sortedExams = sortExamsByDateDesc(exams);
 
   return sortedExams[0] ?? null;
 }
@@ -108,7 +120,9 @@ async function getLatestResultByName(
   patientId: string,
   testName: string,
 ) {
-  const exams = await getPatientExams(ctx, patientId);
+  const exams = await getPatientExams(ctx, patientId, {
+    completedOnly: true,
+  });
   const examById = getExamDateLookup(exams);
   const results = await getPatientResults(ctx, patientId);
 
@@ -214,7 +228,9 @@ export const getTestHistory = query({
   handler: async (ctx, args) => {
     const { patientId } = await requirePatientAccess(ctx, args.patientId);
     const limit = args.limit ?? 10;
-    const exams = await getPatientExams(ctx, patientId);
+    const exams = await getPatientExams(ctx, patientId, {
+      completedOnly: true,
+    });
     const examById = getExamDateLookup(exams);
     const results = await getPatientResults(ctx, patientId);
 

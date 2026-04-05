@@ -11,6 +11,7 @@
 import type * as actions_processExam from "../actions/processExam.js";
 import type * as auth from "../auth.js";
 import type * as cache from "../cache.js";
+import type * as dashboard from "../dashboard.js";
 import type * as exams from "../exams.js";
 import type * as healthCheck from "../healthCheck.js";
 import type * as http from "../http.js";
@@ -25,6 +26,7 @@ import type * as lib_pdfExtractor from "../lib/pdfExtractor.js";
 import type * as manualMetrics from "../manualMetrics.js";
 import type * as metricCatalog from "../metricCatalog.js";
 import type * as migrations from "../migrations.js";
+import type * as patientProfile from "../patientProfile.js";
 import type * as patients from "../patients.js";
 import type * as privateData from "../privateData.js";
 import type * as rateLimiter from "../rateLimiter.js";
@@ -43,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   "actions/processExam": typeof actions_processExam;
   auth: typeof auth;
   cache: typeof cache;
+  dashboard: typeof dashboard;
   exams: typeof exams;
   healthCheck: typeof healthCheck;
   http: typeof http;
@@ -57,6 +60,7 @@ declare const fullApi: ApiFromModules<{
   manualMetrics: typeof manualMetrics;
   metricCatalog: typeof metricCatalog;
   migrations: typeof migrations;
+  patientProfile: typeof patientProfile;
   patients: typeof patients;
   privateData: typeof privateData;
   rateLimiter: typeof rateLimiter;

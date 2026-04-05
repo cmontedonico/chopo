@@ -20,6 +20,7 @@ import {
   Network,
   ShieldCheck,
   Stethoscope,
+  User,
   Users,
 } from "lucide-react";
 
@@ -36,8 +37,14 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/app/profile", label: "Mi perfil", icon: User },
   { to: "/app/upload", label: "Subir resultados", icon: FileUp, roles: ["user", "super_admin"] },
-  { to: "/app/correlations", label: "Correlaciones", icon: Network, roles: ["user", "super_admin"] },
+  {
+    to: "/app/correlations",
+    label: "Correlaciones",
+    icon: Network,
+    roles: ["user", "super_admin"],
+  },
 ];
 
 const ADMIN_ITEMS: NavItem[] = [
@@ -104,7 +111,10 @@ export function AppSidebar() {
             <SidebarMenu>
               {visibleNav.map((item) => (
                 <SidebarMenuItem key={item.to}>
-                  <SidebarMenuButton render={<Link to={item.to} />} isActive={currentPath === item.to}>
+                  <SidebarMenuButton
+                    render={<Link to={item.to} />}
+                    isActive={currentPath === item.to}
+                  >
                     <item.icon className="h-4 w-4" />
                     <span>{item.label}</span>
                   </SidebarMenuButton>
@@ -121,7 +131,10 @@ export function AppSidebar() {
               <SidebarMenu>
                 {visibleDoctor.map((item) => (
                   <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton render={<Link to={item.to} />} isActive={currentPath === item.to}>
+                    <SidebarMenuButton
+                      render={<Link to={item.to} />}
+                      isActive={currentPath === item.to}
+                    >
                       <item.icon className="h-4 w-4" />
                       <span>{item.label}</span>
                     </SidebarMenuButton>
@@ -139,7 +152,10 @@ export function AppSidebar() {
               <SidebarMenu>
                 {visibleAdmin.map((item) => (
                   <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton render={<Link to={item.to} />} isActive={currentPath === item.to}>
+                    <SidebarMenuButton
+                      render={<Link to={item.to} />}
+                      isActive={currentPath === item.to}
+                    >
                       <item.icon className="h-4 w-4" />
                       <span>{item.label}</span>
                     </SidebarMenuButton>
