@@ -261,7 +261,7 @@ describe("convex/dashboard", () => {
     });
   });
 
-  it("getKeyMetrics returns the latest matching results in the requested order and omits missing metrics", async () => {
+  it("getKeyMetrics returns the latest completed results in the requested order and omits missing metrics", async () => {
     const { ctx } = createMockCtx({
       exams: [
         makeExam({
@@ -273,6 +273,11 @@ describe("convex/dashboard", () => {
           _id: "exam_2" as Id<"exams">,
           examDate: 1_700_086_400_000,
           status: "completed",
+        }),
+        makeExam({
+          _id: "exam_processing" as Id<"exams">,
+          examDate: 1_700_172_800_000,
+          status: "processing",
         }),
       ],
       testResults: [
@@ -299,6 +304,12 @@ describe("convex/dashboard", () => {
           examId: "exam_2" as Id<"exams">,
           name: "Triglicéridos",
           value: 145,
+        }),
+        makeResult({
+          _id: "glucose_processing" as Id<"testResults">,
+          examId: "exam_processing" as Id<"exams">,
+          name: "Glucosa",
+          value: 140,
         }),
       ],
     });
@@ -328,7 +339,7 @@ describe("convex/dashboard", () => {
     expect(result).toHaveLength(3);
   });
 
-  it("getTestHistory orders by exam date and respects the limit", async () => {
+  it("getTestHistory orders completed exams by date and respects the limit", async () => {
     const { ctx } = createMockCtx({
       exams: [
         makeExam({
@@ -345,6 +356,11 @@ describe("convex/dashboard", () => {
           _id: "exam_mar" as Id<"exams">,
           examDate: Date.parse("2024-03-15T00:00:00Z"),
           status: "completed",
+        }),
+        makeExam({
+          _id: "exam_apr_processing" as Id<"exams">,
+          examDate: Date.parse("2024-04-15T00:00:00Z"),
+          status: "processing",
         }),
       ],
       testResults: [
@@ -365,6 +381,12 @@ describe("convex/dashboard", () => {
           examId: "exam_mar" as Id<"exams">,
           name: "Glucosa",
           value: 101,
+        }),
+        makeResult({
+          _id: "result_apr_processing" as Id<"testResults">,
+          examId: "exam_apr_processing" as Id<"exams">,
+          name: "Glucosa",
+          value: 130,
         }),
       ],
     });

@@ -78,6 +78,18 @@ export default defineSchema({
     .index("by_doctor", ["doctorAuthUserId"])
     .index("by_patient", ["patientAuthUserId"]),
 
+  patientProfiles: defineTable({
+    patientId: v.string(),
+    age: v.optional(v.number()),
+    sex: v.optional(v.string()),
+    bloodType: v.optional(v.string()),
+    weight: v.optional(v.number()),
+    height: v.optional(v.number()),
+    conditions: v.optional(v.array(v.string())),
+    medications: v.optional(v.array(v.string())),
+    updatedAt: v.number(),
+  }).index("by_patient", ["patientId"]),
+
   auditLog: defineTable({
     userId: v.string(),
     action: v.string(),
