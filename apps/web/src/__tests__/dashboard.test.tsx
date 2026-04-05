@@ -4,7 +4,7 @@ import type { Id } from "@chopo-v1/backend/convex/_generated/dataModel";
 
 import { SidebarProvider } from "@chopo-v1/ui/components/sidebar";
 
-import { DashboardPageView } from "../routes/app/index";
+import { DashboardPageView, reconcileComparisonSelections } from "../routes/app/index";
 
 const baseResults = [
   {
@@ -172,5 +172,29 @@ describe("dashboard page", () => {
 
     expect(html.includes("Metabolismo")).toBe(true);
     expect(html.includes("0/0 normal")).toBe(false);
+  });
+
+  test("reconciles stale comparison selections against the current exam list", () => {
+    const selections = reconcileComparisonSelections(
+      [
+        {
+          _id: "exam_1" as Id<"exams">,
+          examType: "Química sanguínea",
+          examDate: Date.now() - 86_400_000,
+          status: "completed",
+        },
+        {
+          _id: "exam_2" as Id<"exams">,
+          examType: "Química sanguínea",
+          examDate: Date.now(),
+          status: "completed",
+        },
+      ],
+      "deleted_exam",
+      "exam_2",
+    );
+
+    expect(selections.selectedExamA).toBe("exam_1");
+    expect(selections.selectedExamB).toBe("exam_2");
   });
 });

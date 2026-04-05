@@ -139,9 +139,13 @@ function createMockCtx({
         throw new Error("Profile not found");
       }
 
+      const definedUpdates = Object.fromEntries(
+        Object.entries(value).filter(([, nextValue]) => nextValue !== undefined),
+      );
+
       profileStore.set(id as Id<"patientProfiles">, {
         ...current,
-        ...value,
+        ...definedUpdates,
       });
     }),
     query: vi.fn((table: string) => ({
@@ -239,6 +243,22 @@ describe("convex/patientProfile", () => {
     expect(getProfiles()[0]?.weight).toBe(74);
     expect(getAudits().some((entry) => entry.fieldName === "age")).toBe(true);
     expect(getAudits().some((entry) => entry.fieldName === "weight")).toBe(true);
+  });
+
+  it("preserves existing arrays when partial updates omit conditions and medications", async () => {
+    vi.mocked(auth.requireRole).mockResolvedValue(makeUser());
+    const existingProfile = makeProfile();
+    const { ctx, getProfiles } = createMockCtx({
+      patientProfiles: [existingProfile],
+    });
+
+    const result = await upsertHandler._handler(ctx, {
+      age: 34,
+    });
+
+    expect(result?.age).toBe(34);
+    expect(getProfiles()[0]?.conditions).toEqual(existingProfile.conditions);
+    expect(getProfiles()[0]?.medications).toEqual(existingProfile.medications);
   });
 
   it("returns the current user's profile by default", async () => {

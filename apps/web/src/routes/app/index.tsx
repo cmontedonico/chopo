@@ -101,6 +101,11 @@ type ComparisonRow = {
   tone: "good" | "bad" | "neutral";
 };
 
+type ComparisonSelectionState = {
+  selectedExamA: string;
+  selectedExamB: string;
+};
+
 const getDashboardSummaryRef = makeFunctionReference<
   "query",
   { patientId?: string },
@@ -213,6 +218,38 @@ function buildComparisonRows(
       tone: getComparisonTone(resultA, resultB),
     };
   });
+}
+
+export function reconcileComparisonSelections(
+  exams: ExamRecord[] | undefined,
+  selectedExamA: string,
+  selectedExamB: string,
+): ComparisonSelectionState {
+  if (!exams || exams.length === 0) {
+    return {
+      selectedExamA: "",
+      selectedExamB: "",
+    };
+  }
+
+  const examIds = new Set(exams.map((exam) => String(exam._id)));
+  let nextSelectedExamA = examIds.has(selectedExamA) ? selectedExamA : "";
+  let nextSelectedExamB = examIds.has(selectedExamB) ? selectedExamB : "";
+
+  if (!nextSelectedExamA) {
+    nextSelectedExamA = String(exams[0]?._id ?? "");
+  }
+
+  if (!nextSelectedExamB) {
+    nextSelectedExamB = String(
+      exams.find((exam) => String(exam._id) !== nextSelectedExamA)?._id ?? exams[0]?._id ?? "",
+    );
+  }
+
+  return {
+    selectedExamA: nextSelectedExamA,
+    selectedExamB: nextSelectedExamB,
+  };
 }
 
 function LoadingCard() {
@@ -883,6 +920,10 @@ function DashboardPage() {
   const keyMetrics = useQuery(getDashboardKeyMetricsRef, {});
   const allResults = useQuery(getDashboardResultsRef, {});
   const exams = useQuery(api.exams.listByPatient, {});
+  const comparisonSelections = useMemo(
+    () => reconcileComparisonSelections(exams, selectedExamA, selectedExamB),
+    [exams, selectedExamA, selectedExamB],
+  );
   const history = useQuery(getDashboardHistoryRef, { testName: selectedTest });
   const filteredResults = useQuery(
     getDashboardResultsRef,
@@ -890,11 +931,15 @@ function DashboardPage() {
   );
   const comparisonResultsA = useQuery(
     api.testResults.listByExam,
-    selectedExamA ? { examId: selectedExamA as Id<"exams"> } : "skip",
+    comparisonSelections.selectedExamA
+      ? { examId: comparisonSelections.selectedExamA as Id<"exams"> }
+      : "skip",
   );
   const comparisonResultsB = useQuery(
     api.testResults.listByExam,
-    selectedExamB ? { examId: selectedExamB as Id<"exams"> } : "skip",
+    comparisonSelections.selectedExamB
+      ? { examId: comparisonSelections.selectedExamB as Id<"exams"> }
+      : "skip",
   );
 
   const categories = useMemo(() => {
@@ -935,18 +980,14 @@ function DashboardPage() {
   }, [categories, selectedCategory]);
 
   useEffect(() => {
-    if (!exams || exams.length < 2) {
-      return;
+    if (comparisonSelections.selectedExamA !== selectedExamA) {
+      setSelectedExamA(comparisonSelections.selectedExamA);
     }
 
-    if (!selectedExamA) {
-      setSelectedExamA(exams[0]?._id ?? "");
+    if (comparisonSelections.selectedExamB !== selectedExamB) {
+      setSelectedExamB(comparisonSelections.selectedExamB);
     }
-
-    if (!selectedExamB) {
-      setSelectedExamB(exams[1]?._id ?? exams[0]?._id ?? "");
-    }
-  }, [exams, selectedExamA, selectedExamB]);
+  }, [comparisonSelections, selectedExamA, selectedExamB]);
 
   return (
     <DashboardPageView
@@ -961,8 +1002,8 @@ function DashboardPage() {
       selectedCategory={selectedCategory}
       onSelectedCategoryChange={setSelectedCategory}
       exams={exams}
-      selectedExamA={selectedExamA}
-      selectedExamB={selectedExamB}
+      selectedExamA={comparisonSelections.selectedExamA}
+      selectedExamB={comparisonSelections.selectedExamB}
       onExamAChange={setSelectedExamA}
       onExamBChange={setSelectedExamB}
       comparisonResultsA={comparisonResultsA}

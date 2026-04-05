@@ -69,8 +69,12 @@ function sanitizeProfileInput(
     bloodType: args.bloodType,
     weight: args.weight,
     height: args.height,
-    conditions: args.conditions?.map((condition) => condition.trim()).filter(Boolean) ?? [],
-    medications: args.medications?.map((medication) => medication.trim()).filter(Boolean) ?? [],
+    conditions: args.conditions
+      ? args.conditions.map((condition) => condition.trim()).filter(Boolean)
+      : undefined,
+    medications: args.medications
+      ? args.medications.map((medication) => medication.trim()).filter(Boolean)
+      : undefined,
   };
 }
 
@@ -86,6 +90,8 @@ export const upsert = mutation({
       const profileId = await ctx.db.insert("patientProfiles", {
         patientId: user.id,
         ...profileInput,
+        conditions: profileInput.conditions ?? [],
+        medications: profileInput.medications ?? [],
         updatedAt: now,
       });
 
@@ -97,6 +103,8 @@ export const upsert = mutation({
         newValue: {
           patientId: user.id,
           ...profileInput,
+          conditions: profileInput.conditions ?? [],
+          medications: profileInput.medications ?? [],
           updatedAt: now,
         },
       });
