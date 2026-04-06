@@ -1,6 +1,12 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { Button } from "@chopo-v1/ui/components/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@chopo-v1/ui/components/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@chopo-v1/ui/components/card";
 import { Input } from "@chopo-v1/ui/components/input";
 import { Label } from "@chopo-v1/ui/components/label";
 import { Activity, ArrowLeft, CheckCircle } from "lucide-react";
@@ -39,8 +45,9 @@ function ResetPasswordPage() {
           {sent ? (
             <div className="space-y-4 text-center">
               <p className="text-sm text-muted-foreground">
-                Hemos enviado un enlace de restablecimiento a <span className="font-medium text-foreground">{email}</span>.
-                Si no lo ves, revisa tu carpeta de spam.
+                Hemos enviado un enlace de restablecimiento a{" "}
+                <span className="font-medium text-foreground">{email}</span>. Si no lo ves, revisa
+                tu carpeta de spam.
               </p>
               <Button variant="outline" className="w-full" onClick={() => setSent(false)}>
                 Enviar de nuevo
@@ -64,7 +71,10 @@ function ResetPasswordPage() {
             </form>
           )}
           <div className="mt-6 text-center">
-            <Link to="/login" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary">
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary"
+            >
               <ArrowLeft className="h-4 w-4" />
               Volver al inicio de sesión
             </Link>

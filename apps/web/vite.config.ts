@@ -23,11 +23,7 @@ function getManualChunkName(id: string): string | undefined {
     return "vendor-ui";
   }
 
-  if (
-    id.includes("@tanstack/") ||
-    id.includes("tiny-invariant") ||
-    id.includes("tiny-warning")
-  ) {
+  if (id.includes("@tanstack/") || id.includes("tiny-invariant") || id.includes("tiny-warning")) {
     return "vendor-tanstack";
   }
 

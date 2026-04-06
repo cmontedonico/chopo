@@ -10,12 +10,7 @@ interface RequireRoleProps {
   redirectTo?: string;
 }
 
-export function RequireRole({
-  roles,
-  children,
-  fallback,
-  redirectTo = "/app",
-}: RequireRoleProps) {
+export function RequireRole({ roles, children, fallback, redirectTo = "/app" }: RequireRoleProps) {
   const { role, isLoading, isAuthenticated } = useCurrentUser();
   const navigate = useNavigate();
 
