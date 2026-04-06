@@ -662,10 +662,12 @@ function MetricDeleteConfirmationDialog({
 }
 
 function MetricHistoryTable({
+  catalog,
   history,
   onUpdateMetric,
   onDeleteMetric,
 }: {
+  catalog: MetricCatalogRecord;
   history: ManualMetricRecord[];
   onUpdateMetric: (args: MetricUpdateArgs) => Promise<void>;
   onDeleteMetric: (args: MetricDeleteArgs) => Promise<void>;
@@ -714,6 +716,14 @@ function MetricHistoryTable({
       return;
     }
 
+    if (catalog.inputType === "scale") {
+      const scaleMax = catalog.scaleMax;
+      if (scaleMax === undefined || numericValue < 1 || numericValue > scaleMax) {
+        toast.error("No se pudo actualizar la métrica");
+        return;
+      }
+    }
+
     try {
       await onUpdateMetric({
         metricId: editingEntry._id,
@@ -755,7 +765,9 @@ function MetricHistoryTable({
                         className="h-8 w-24 text-right"
                         type="number"
                         inputMode="decimal"
-                        step="any"
+                        min={catalog.inputType === "scale" ? 1 : undefined}
+                        max={catalog.inputType === "scale" ? catalog.scaleMax : undefined}
+                        step={catalog.inputType === "scale" ? 1 : "any"}
                         value={editingValue}
                         onChange={(event) => setEditingValue(event.target.value)}
                       />
@@ -1013,6 +1025,7 @@ function MetricDetailsPanel({
           </div>
         ) : (
           <MetricHistoryTable
+            catalog={catalog}
             history={history}
             onUpdateMetric={onUpdateMetric}
             onDeleteMetric={onDeleteMetric}

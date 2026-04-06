@@ -28,9 +28,7 @@ async function assertDoctorAssignedToPatient(
   const assignment = await ctx.db
     .query("doctorPatients")
     .withIndex("by_doctor_patient", (q) =>
-      q
-        .eq("doctorAuthUserId", doctorAuthUserId)
-        .eq("patientAuthUserId", patientAuthUserId),
+      q.eq("doctorAuthUserId", doctorAuthUserId).eq("patientAuthUserId", patientAuthUserId),
     )
     .unique();
 
@@ -39,11 +37,7 @@ async function assertDoctorAssignedToPatient(
   }
 }
 
-async function assertCanAccessPatient(
-  ctx: Ctx,
-  user: AuthenticatedUser,
-  patientId: string,
-) {
+async function assertCanAccessPatient(ctx: Ctx, user: AuthenticatedUser, patientId: string) {
   if (user.role === "super_admin" || user.id === patientId) {
     return;
   }
@@ -81,10 +75,7 @@ async function assertCanManageOwnedMetric(user: AuthenticatedUser, metric: Manua
   throw new Error("Forbidden: insufficient permissions");
 }
 
-async function assertCanManageOwnedMetricOrNotFound(
-  user: AuthenticatedUser,
-  metric: ManualMetric,
-) {
+async function assertCanManageOwnedMetricOrNotFound(user: AuthenticatedUser, metric: ManualMetric) {
   try {
     await assertCanManageOwnedMetric(user, metric);
   } catch (error) {
@@ -141,10 +132,7 @@ function sortCatalogsByName(catalogs: MetricCatalog[]) {
   });
 }
 
-async function getCatalogOrThrow(
-  ctx: Ctx,
-  catalogId: Id<"metricCatalog">,
-): Promise<MetricCatalog> {
+async function getCatalogOrThrow(ctx: Ctx, catalogId: Id<"metricCatalog">): Promise<MetricCatalog> {
   const catalog = await ctx.db.get(catalogId);
 
   if (!catalog) {
@@ -221,6 +209,9 @@ export const update = mutation({
 
     await assertCanManageOwnedMetricOrNotFound(user, metric);
 
+    const catalog =
+      args.value !== undefined ? await getCatalogOrThrow(ctx, metric.catalogId) : undefined;
+
     const updates: Partial<Pick<ManualMetric, "value" | "recordedAt" | "notes">> = {};
     const auditEntries: Array<{
       fieldName: string;
@@ -229,6 +220,7 @@ export const update = mutation({
     }> = [];
 
     if (args.value !== undefined && args.value !== metric.value) {
+      assertScaleValueInRange(catalog!, args.value);
       updates.value = args.value;
       auditEntries.push({
         fieldName: "value",
@@ -367,11 +359,12 @@ export const getLatestByPatient = query({
       (await ctx.db.query("metricCatalog").collect()).filter(isActiveCatalog),
     );
     const metrics = sortByRecordedAtDesc(
-      (await ctx.db
-        .query("manualMetrics")
-        .withIndex("by_patient", (q) => q.eq("patientId", patientId))
-        .collect())
-        .filter(isActiveMetric),
+      (
+        await ctx.db
+          .query("manualMetrics")
+          .withIndex("by_patient", (q) => q.eq("patientId", patientId))
+          .collect()
+      ).filter(isActiveMetric),
     );
 
     const latestByCatalog = new Map<string, ManualMetric>();
