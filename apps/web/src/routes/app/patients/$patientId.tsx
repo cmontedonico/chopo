@@ -116,7 +116,7 @@ function ReadOnlyValue({
   return (
     <div className="space-y-1 rounded-lg border p-4">
       <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="font-medium">{value || "Sin dato"}</p>
+      <p className="font-medium">{value ?? "Sin dato"}</p>
     </div>
   );
 }
