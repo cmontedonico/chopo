@@ -231,10 +231,9 @@ describe("convex/uploads", () => {
 
   it("createExamFromUpload rejects when the user already reached the free limit", async () => {
     const { ctx } = createMockCtx({
-      exams: [
-        makeExam({ _id: "exam_1" as Id<"exams"> }),
-        makeExam({ _id: "exam_2" as Id<"exams">, examDate: 1_700_000_001_000 }),
-      ],
+      exams: Array.from({ length: 10 }, (_, i) =>
+        makeExam({ _id: `exam_${i + 1}` as Id<"exams">, examDate: 1_700_000_000_000 + i * 1000 }),
+      ),
     });
     mockedRequireRole.mockResolvedValue(makeUser());
 
