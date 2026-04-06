@@ -8,7 +8,11 @@ describe("upload page", () => {
   test("renders without errors", () => {
     const html = renderToStaticMarkup(
       <SidebarProvider>
-        <UploadPageView exams={[]} onUpload={async () => undefined} />
+        <UploadPageView
+          exams={[]}
+          onUpload={async () => undefined}
+          onDelete={async () => undefined}
+        />
       </SidebarProvider>,
     );
 
@@ -19,7 +23,11 @@ describe("upload page", () => {
   test("shows the empty state when no exams are available", () => {
     const html = renderToStaticMarkup(
       <SidebarProvider>
-        <UploadPageView exams={[]} onUpload={async () => undefined} />
+        <UploadPageView
+          exams={[]}
+          onUpload={async () => undefined}
+          onDelete={async () => undefined}
+        />
       </SidebarProvider>,
     );
 
@@ -32,8 +40,9 @@ describe("upload page", () => {
 
     await submitUploadToBackend({
       file,
-      labName: "Chopo Sucursal Centro",
+      labName: "Chopo",
       examType: "Biometría hemática",
+      examDate: new Date("2024-06-15T12:00:00").getTime(),
       notes: "Notas",
       generateUploadUrl: async () => {
         calls.push("generate");
@@ -42,7 +51,7 @@ describe("upload page", () => {
       createExam: async (args) => {
         calls.push("create");
         expect(String(args.storageId)).toBe("storage_123");
-        expect(args.labName).toBe("Chopo Sucursal Centro");
+        expect(args.labName).toBe("Chopo");
         expect(args.examType).toBe("Biometría hemática");
         expect(args.fileName).toBe("analisis.pdf");
         expect(args.notes).toBe("Notas");

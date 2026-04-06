@@ -77,7 +77,7 @@ const listByPatientHandler = listByPatient as unknown as Handler<
   {
     patientId?: string;
   },
-  Promise<MockExam[]>
+  Promise<Array<MockExam & { fileUrl: string | null }>>
 >;
 
 // Safe because Convex attaches `_handler` at runtime and tests only narrow the export to call that internal handler.
@@ -108,9 +108,7 @@ function makeExam(overrides: Partial<MockExam> = {}): MockExam {
   };
 }
 
-function makeAssignment(
-  overrides: Partial<MockAssignment> = {},
-): MockAssignment {
+function makeAssignment(overrides: Partial<MockAssignment> = {}): MockAssignment {
   return {
     // Safe because tests use a deterministic string fixture and only need the branded Convex assignment id type.
     _id: "assignment_1" as Id<"doctorPatients">,
@@ -122,15 +120,19 @@ function makeAssignment(
   };
 }
 
+type MockTestResult = Doc<"testResults">;
+
 function createMockCtx({
   exams = [],
   doctorPatients = [],
   auditLog = [],
+  testResults = [],
   doctorPatientsQueryError,
 }: {
   exams?: MockExam[];
   doctorPatients?: MockAssignment[];
   auditLog?: MockAudit[];
+  testResults?: MockTestResult[];
   doctorPatientsQueryError?: Error;
 } = {}) {
   const examStore = new Map(exams.map((exam) => [exam._id, { ...exam }]));
@@ -138,6 +140,8 @@ function createMockCtx({
     doctorPatients.map((assignment) => [assignment._id, { ...assignment }]),
   );
   const auditStore = new Map(auditLog.map((entry) => [entry._id, { ...entry }]));
+  const testResultStore = new Map(testResults.map((result) => [result._id, { ...result }]));
+  const deletedStorageIds: string[] = [];
   let insertCount = 0;
 
   const db = {
@@ -178,23 +182,29 @@ function createMockCtx({
       return `${table}_${insertCount}` as string;
     }),
     patch: vi.fn(async (id: string, value: Record<string, unknown>) => {
-      // Safe because patch is only used for exams in this test helper, even though the mock DB API accepts a plain runtime string.
-      const current = examStore.get(id as Id<"exams">);
-      if (!current) {
-        throw new Error("Exam not found");
+      // Safe because patch targets exams or testResults in this test helper.
+      const examRecord = examStore.get(id as Id<"exams">);
+      if (examRecord) {
+        examStore.set(id as Id<"exams">, { ...examRecord, ...value });
+        return;
       }
 
-      // Safe because patch in this helper only targets the examStore, so the incoming runtime ID maps to a branded exam ID.
-      examStore.set(id as Id<"exams">, {
-        ...current,
-        ...value,
-      });
+      const testResultRecord = testResultStore.get(id as Id<"testResults">);
+      if (testResultRecord) {
+        testResultStore.set(id as Id<"testResults">, { ...testResultRecord, ...value });
+        return;
+      }
+
+      throw new Error("Record not found");
     }),
     query: vi.fn((table: string) => ({
       withIndex: (
         indexName: string,
         apply: (query: {
-          eq: (field: string, value: unknown) => {
+          eq: (
+            field: string,
+            value: unknown,
+          ) => {
             eq: (field: string, value: unknown) => unknown;
           };
         }) => unknown,
@@ -214,7 +224,9 @@ function createMockCtx({
             ? Array.from(examStore.values())
             : table === "doctorPatients"
               ? Array.from(doctorPatientStore.values())
-              : Array.from(auditStore.values());
+              : table === "testResults"
+                ? Array.from(testResultStore.values())
+                : Array.from(auditStore.values());
 
         const matches = source.filter((doc) =>
           filters.every((filter) => doc[filter.field as keyof typeof doc] === filter.value),
@@ -265,11 +277,20 @@ function createMockCtx({
     })),
   };
 
+  const storage = {
+    getUrl: vi.fn(async (fileId: string) => `https://storage.example/${fileId}`),
+    delete: vi.fn(async (fileId: string) => {
+      deletedStorageIds.push(fileId);
+    }),
+  };
+
   return {
-    ctx: { db },
+    ctx: { db, storage },
     examStore,
     doctorPatientStore,
     auditStore,
+    testResultStore,
+    deletedStorageIds,
   };
 }
 
@@ -318,9 +339,7 @@ describe("convex/exams", () => {
 
   it("create lets super_admin create an exam for a specific patient", async () => {
     const { ctx, examStore, auditStore } = createMockCtx();
-    requireRoleMock.mockResolvedValue(
-      makeUser({ id: "admin_1", role: "super_admin" }),
-    );
+    requireRoleMock.mockResolvedValue(makeUser({ id: "admin_1", role: "super_admin" }));
     vi.spyOn(Date, "now").mockReturnValue(1_700_000_001_500);
 
     const examId = await createHandler._handler(ctx, {
@@ -354,9 +373,7 @@ describe("convex/exams", () => {
 
   it("create requires super_admin to provide a patientId", async () => {
     const { ctx, examStore, auditStore } = createMockCtx();
-    requireRoleMock.mockResolvedValue(
-      makeUser({ id: "admin_1", role: "super_admin" }),
-    );
+    requireRoleMock.mockResolvedValue(makeUser({ id: "admin_1", role: "super_admin" }));
 
     await expect(
       createHandler._handler(ctx, {
@@ -547,10 +564,9 @@ describe("convex/exams", () => {
 
     const exams = await listByPatientHandler._handler(ctx, {});
 
-    expect(exams.map((exam: MockExam) => exam._id)).toEqual([
-      "exam_new",
-      "exam_old",
-    ]);
+    expect(exams.map((exam) => exam._id)).toEqual(["exam_new", "exam_old"]);
+    // Verify fileUrl is included
+    expect(exams[0]?.fileUrl).toBe("https://storage.example/file_1");
   });
 
   it("getById returns null for soft-deleted exams", async () => {
