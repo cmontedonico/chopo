@@ -15,6 +15,7 @@ import type * as dashboard from "../dashboard.js";
 import type * as exams from "../exams.js";
 import type * as healthCheck from "../healthCheck.js";
 import type * as http from "../http.js";
+import type * as invitations from "../invitations.js";
 import type * as labAnalyteCatalog from "../labAnalyteCatalog.js";
 import type * as labAnalyteCatalogMigration from "../labAnalyteCatalogMigration.js";
 import type * as lib_access from "../lib/access.js";
@@ -49,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   exams: typeof exams;
   healthCheck: typeof healthCheck;
   http: typeof http;
+  invitations: typeof invitations;
   labAnalyteCatalog: typeof labAnalyteCatalog;
   labAnalyteCatalogMigration: typeof labAnalyteCatalogMigration;
   "lib/access": typeof lib_access;
