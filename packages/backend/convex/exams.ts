@@ -290,6 +290,27 @@ export const softDelete = mutation({
       tableName: "exams",
       recordId: args.examId,
     });
+
+    // Cascade soft-delete related testResults
+    const testResults = await ctx.db
+      .query("testResults")
+      .withIndex("by_exam", (q) => q.eq("examId", args.examId))
+      .collect();
+
+    for (const result of testResults) {
+      if (result.deletedAt === undefined) {
+        await ctx.db.patch(result._id, { deletedAt: now });
+        await logAudit(ctx, {
+          userId: user.id,
+          action: "delete",
+          tableName: "testResults",
+          recordId: result._id,
+        });
+      }
+    }
+
+    // Delete the file from storage
+    await ctx.storage.delete(exam.fileId);
   },
 });
 
@@ -369,7 +390,13 @@ export const listByPatient = query({
       .order("desc")
       .collect();
 
-    return exams.filter(isActiveExam);
+    const activeExams = exams.filter(isActiveExam);
+    return Promise.all(
+      activeExams.map(async (exam) => ({
+        ...exam,
+        fileUrl: await ctx.storage.getUrl(exam.fileId),
+      })),
+    );
   },
 });
 

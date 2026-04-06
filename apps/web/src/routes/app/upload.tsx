@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import type { Id } from "@chopo-v1/backend/convex/_generated/dataModel";
-import { CheckCircle2, FileText, Loader2, Upload, XCircle } from "lucide-react";
+import { CheckCircle2, Eye, FileText, Loader2, Trash2, Upload, XCircle } from "lucide-react";
 import { useState, type ChangeEvent, type DragEvent, type FormEvent } from "react";
 import { toast } from "sonner";
 
@@ -49,6 +49,8 @@ type ExamRecord = {
   examDate: number;
   status: string;
   fileName: string;
+  fileId: string;
+  fileUrl: string | null;
   errorMessage?: string | null;
 };
 
@@ -56,6 +58,7 @@ type UploadExamArgs = {
   file: File;
   labName: string;
   examType: string;
+  examDate: number;
   notes?: string;
   generateUploadUrl: () => Promise<string>;
   createExam: (args: {
@@ -69,13 +72,7 @@ type UploadExamArgs = {
   fetchImpl?: typeof fetch;
 };
 
-const LAB_OPTIONS = [
-  { value: "Chopo Sucursal Centro", label: "Chopo Sucursal Centro" },
-  { value: "Chopo Sucursal Polanco", label: "Chopo Sucursal Polanco" },
-  { value: "Chopo Sucursal Santa Fe", label: "Chopo Sucursal Santa Fe" },
-  { value: "Chopo Sucursal Condesa", label: "Chopo Sucursal Condesa" },
-  { value: "Otro laboratorio", label: "Otro laboratorio" },
-];
+const LAB_OPTIONS = [{ value: "Chopo", label: "Chopo" }];
 
 const EXAM_TYPE_OPTIONS = [
   { value: "Química sanguínea 40 elementos", label: "Química sanguínea 40 elementos" },
@@ -124,6 +121,7 @@ export async function submitUploadToBackend({
   file,
   labName,
   examType,
+  examDate,
   notes,
   generateUploadUrl,
   createExam,
@@ -149,7 +147,7 @@ export async function submitUploadToBackend({
     storageId: storageId as Id<"_storage">,
     labName,
     examType,
-    examDate: Date.now(),
+    examDate,
     fileName: file.name,
     notes: notes || undefined,
   });
@@ -219,6 +217,9 @@ function LoadingRows() {
           <TableCell className="text-center">
             <Skeleton className="mx-auto h-5 w-24" />
           </TableCell>
+          <TableCell className="text-center">
+            <Skeleton className="mx-auto h-5 w-16" />
+          </TableCell>
         </TableRow>
       ))}
     </>
@@ -228,19 +229,23 @@ function LoadingRows() {
 export function UploadPageView({
   exams,
   onUpload,
+  onDelete,
 }: {
   exams: ExamRecord[] | undefined;
   onUpload: (args: {
     file: File;
     labName: string;
     examType: string;
+    examDate: number;
     notes?: string;
   }) => Promise<void>;
+  onDelete: (examId: string) => Promise<void>;
 }) {
   const [dragActive, setDragActive] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [labName, setLabName] = useState("");
   const [examType, setExamType] = useState("");
+  const [examDate, setExamDate] = useState("");
   const [notes, setNotes] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [paywallMessage, setPaywallMessage] = useState<string | null>(null);
@@ -270,28 +275,48 @@ export function UploadPageView({
     }
   }
 
+  async function handleDelete(examId: string) {
+    if (
+      !window.confirm(
+        "¿Estás seguro de que deseas eliminar este estudio? Se eliminarán todos los resultados asociados.",
+      )
+    ) {
+      return;
+    }
+    try {
+      await onDelete(examId);
+      toast.success("Estudio eliminado");
+    } catch {
+      toast.error("No se pudo eliminar el estudio");
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const file = files[0];
-    if (!file || !labName || !examType || isUploading) {
+    if (!file || !labName || !examType || !examDate || isUploading) {
       return;
     }
 
     setIsUploading(true);
     setPaywallMessage(null);
 
+    const examDateTimestamp = new Date(examDate + "T12:00:00").getTime();
+
     try {
       await onUpload({
         file,
         labName,
         examType,
+        examDate: examDateTimestamp,
         notes: notes.trim() || undefined,
       });
       toast.success("Estudio subido. Procesando resultados...");
       setFiles([]);
       setLabName("");
       setExamType("");
+      setExamDate("");
       setNotes("");
     } catch (error) {
       const message = error instanceof Error ? error.message : "No se pudo subir el estudio.";
@@ -417,6 +442,18 @@ export function UploadPageView({
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="exam-date">Fecha del estudio</Label>
+                <Input
+                  id="exam-date"
+                  type="date"
+                  value={examDate}
+                  onChange={(event) => setExamDate(event.target.value)}
+                  max={new Date().toISOString().split("T")[0]}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="notes">Notas (opcional)</Label>
                 <Textarea
                   id="notes"
@@ -430,7 +467,7 @@ export function UploadPageView({
               <Button
                 type="submit"
                 className="w-full"
-                disabled={files.length === 0 || !labName || !examType || isUploading}
+                disabled={files.length === 0 || !labName || !examType || !examDate || isUploading}
               >
                 {isUploading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -463,6 +500,7 @@ export function UploadPageView({
                       <TableHead>Laboratorio</TableHead>
                       <TableHead>Archivo</TableHead>
                       <TableHead className="text-center">Estado</TableHead>
+                      <TableHead className="text-center">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -488,6 +526,7 @@ export function UploadPageView({
                     <TableHead>Laboratorio</TableHead>
                     <TableHead>Archivo</TableHead>
                     <TableHead className="text-center">Estado</TableHead>
+                    <TableHead className="text-center">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -507,6 +546,30 @@ export function UploadPageView({
                       </TableCell>
                       <TableCell className="text-center">
                         <StatusBadge exam={exam} />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          {exam.fileUrl && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => window.open(exam.fileUrl as string, "_blank")}
+                              title="Ver archivo original"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            onClick={() => handleDelete(exam._id)}
+                            title="Eliminar estudio"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -563,27 +626,41 @@ function UploadPage() {
   const exams = useQuery(api.exams.listByPatient, {});
   const generateUploadUrl = useMutation(api.uploads.generateUploadUrl);
   const createExam = useMutation(api.uploads.createExamFromUpload);
+  const softDeleteExam = useMutation(api.exams.softDelete);
 
   async function handleUpload({
     file,
     labName,
     examType,
+    examDate,
     notes,
   }: {
     file: File;
     labName: string;
     examType: string;
+    examDate: number;
     notes?: string;
   }) {
     await submitUploadToBackend({
       file,
       labName,
       examType,
+      examDate,
       notes,
       generateUploadUrl: () => generateUploadUrl({}),
       createExam: (args) => createExam(args),
     });
   }
 
-  return <UploadPageView exams={exams as ExamRecord[] | undefined} onUpload={handleUpload} />;
+  async function handleDelete(examId: string) {
+    await softDeleteExam({ examId: examId as Id<"exams"> });
+  }
+
+  return (
+    <UploadPageView
+      exams={exams as ExamRecord[] | undefined}
+      onUpload={handleUpload}
+      onDelete={handleDelete}
+    />
+  );
 }

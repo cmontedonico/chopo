@@ -8,23 +8,15 @@ import type { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 import authConfig from "./auth.config";
 import authSchema from "./betterAuth/schema";
-import {
-  ac,
-  doctorRole,
-  superAdminRole,
-  userRole,
-} from "./lib/access";
+import { ac, doctorRole, superAdminRole, userRole } from "./lib/access";
 
 const siteUrl = process.env.SITE_URL!;
 
-export const authComponent = createClient<DataModel, typeof authSchema>(
-  components.betterAuth,
-  {
-    local: {
-      schema: authSchema,
-    },
+export const authComponent = createClient<DataModel, typeof authSchema>(components.betterAuth, {
+  local: {
+    schema: authSchema,
   },
-);
+});
 
 export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
   return {
@@ -33,6 +25,10 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
+    },
+    session: {
+      expiresIn: 60 * 60 * 24 * 7, // 7 days (rememberMe: true)
+      updateAge: 60 * 60 * 24, // refresh session if older than 1 day
     },
     plugins: [
       crossDomain({ siteUrl }),
