@@ -63,7 +63,7 @@ export const createExamFromUpload = mutation({
     const user = await requireUploadRole(ctx, "user", "super_admin");
 
     const activeExamCount = await countActiveExamsForPatient(ctx, user.id);
-    const maxExams = 2;
+    const maxExams = 10;
 
     if (activeExamCount >= maxExams) {
       throw new Error("Límite de estudios alcanzado. Actualiza tu plan.");

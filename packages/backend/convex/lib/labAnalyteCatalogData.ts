@@ -33,7 +33,7 @@ export const DEFAULT_LAB_ANALYTES = [
   {
     name: "Colesterol total",
     category: "LÍPIDOS",
-    aliases: ["colesterol total", "cholesterol total"],
+    aliases: ["colesterol total", "cholesterol total", "colesterol"],
     isActive: true,
   },
   {
@@ -153,7 +153,13 @@ export const DEFAULT_LAB_ANALYTES = [
   {
     name: "Nitrógeno ureico (BUN)",
     category: "RENAL",
-    aliases: ["nitrogeno ureico", "nitrógeno ureico", "bun"],
+    aliases: [
+      "nitrogeno ureico",
+      "nitrógeno ureico",
+      "bun",
+      "nitrogeno de urea en sangre (bun)",
+      "nitrógeno de urea en sangre (bun)",
+    ],
     isActive: true,
   },
   {
