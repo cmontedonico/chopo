@@ -617,7 +617,8 @@ function QuickAddDialog({
       return;
     }
 
-    if (!catalogId) {
+    const stillExists = catalogId && catalogs.some((c) => String(c._id) === catalogId);
+    if (!stillExists) {
       setCatalogId(String(catalogs[0]._id));
     }
   }, [catalogId, catalogs]);
