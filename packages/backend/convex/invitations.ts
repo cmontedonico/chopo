@@ -156,9 +156,20 @@ export const listByPatient = query({
         const doctor = invitation.acceptedByDoctorId
           ? await getUserById(ctx, invitation.acceptedByDoctorId)
           : null;
+        const assignment = invitation.acceptedByDoctorId
+          ? await ctx.db
+              .query("doctorPatients")
+              .withIndex("by_doctor_patient", (q) =>
+                q
+                  .eq("doctorAuthUserId", invitation.acceptedByDoctorId!)
+                  .eq("patientAuthUserId", invitation.patientId),
+              )
+              .unique()
+          : null;
 
         return {
           ...invitation,
+          connectedAt: assignment?.createdAt ?? null,
           doctor: doctor
             ? {
                 id: doctor._id,

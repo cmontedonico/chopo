@@ -18,6 +18,7 @@ import {
   LayoutDashboard,
   LogOut,
   Network,
+  Share2,
   ShieldCheck,
   Stethoscope,
   User,
@@ -50,6 +51,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Métricas",
     icon: Activity,
     roles: ["user", "super_admin"],
+  },
+  {
+    to: "/app/share",
+    label: "Compartir",
+    icon: Share2,
+    roles: ["user"],
   },
 ];
 

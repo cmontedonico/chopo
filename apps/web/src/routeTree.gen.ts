@@ -16,10 +16,17 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
+import { Route as InviteCodeRouteImport } from './routes/invite.$code'
 import { Route as AppUploadRouteImport } from './routes/app/upload'
+import { Route as AppShareRouteImport } from './routes/app/share'
 import { Route as AppProfileRouteImport } from './routes/app/profile'
+import { Route as AppPatientsRouteImport } from './routes/app/patients'
 import { Route as AppMetricsRouteImport } from './routes/app/metrics'
 import { Route as AppCorrelationsRouteImport } from './routes/app/correlations'
+import { Route as AppAdminRouteImport } from './routes/app/admin'
+import { Route as AppPatientsIndexRouteImport } from './routes/app/patients/index'
+import { Route as AppPatientsPatientIdRouteImport } from './routes/app/patients/$patientId'
+import { Route as AppAdminUsersRouteImport } from './routes/app/admin/users'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -56,14 +63,29 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const InviteCodeRoute = InviteCodeRouteImport.update({
+  id: '/invite/$code',
+  path: '/invite/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppUploadRoute = AppUploadRouteImport.update({
   id: '/upload',
   path: '/upload',
   getParentRoute: () => AppRoute,
 } as any)
+const AppShareRoute = AppShareRouteImport.update({
+  id: '/share',
+  path: '/share',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppProfileRoute = AppProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPatientsRoute = AppPatientsRouteImport.update({
+  id: '/patients',
+  path: '/patients',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMetricsRoute = AppMetricsRouteImport.update({
@@ -76,6 +98,26 @@ const AppCorrelationsRoute = AppCorrelationsRouteImport.update({
   path: '/correlations',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminRoute = AppAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPatientsIndexRoute = AppPatientsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppPatientsRoute,
+} as any)
+const AppPatientsPatientIdRoute = AppPatientsPatientIdRouteImport.update({
+  id: '/$patientId',
+  path: '/$patientId',
+  getParentRoute: () => AppPatientsRoute,
+} as any)
+const AppAdminUsersRoute = AppAdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AppAdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -84,11 +126,18 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/app/admin': typeof AppAdminRouteWithChildren
   '/app/correlations': typeof AppCorrelationsRoute
   '/app/metrics': typeof AppMetricsRoute
+  '/app/patients': typeof AppPatientsRouteWithChildren
   '/app/profile': typeof AppProfileRoute
+  '/app/share': typeof AppShareRoute
   '/app/upload': typeof AppUploadRoute
+  '/invite/$code': typeof InviteCodeRoute
   '/app/': typeof AppIndexRoute
+  '/app/admin/users': typeof AppAdminUsersRoute
+  '/app/patients/$patientId': typeof AppPatientsPatientIdRoute
+  '/app/patients/': typeof AppPatientsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -96,11 +145,17 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/app/admin': typeof AppAdminRouteWithChildren
   '/app/correlations': typeof AppCorrelationsRoute
   '/app/metrics': typeof AppMetricsRoute
   '/app/profile': typeof AppProfileRoute
+  '/app/share': typeof AppShareRoute
   '/app/upload': typeof AppUploadRoute
+  '/invite/$code': typeof InviteCodeRoute
   '/app': typeof AppIndexRoute
+  '/app/admin/users': typeof AppAdminUsersRoute
+  '/app/patients/$patientId': typeof AppPatientsPatientIdRoute
+  '/app/patients': typeof AppPatientsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -110,11 +165,18 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/app/admin': typeof AppAdminRouteWithChildren
   '/app/correlations': typeof AppCorrelationsRoute
   '/app/metrics': typeof AppMetricsRoute
+  '/app/patients': typeof AppPatientsRouteWithChildren
   '/app/profile': typeof AppProfileRoute
+  '/app/share': typeof AppShareRoute
   '/app/upload': typeof AppUploadRoute
+  '/invite/$code': typeof InviteCodeRoute
   '/app/': typeof AppIndexRoute
+  '/app/admin/users': typeof AppAdminUsersRoute
+  '/app/patients/$patientId': typeof AppPatientsPatientIdRoute
+  '/app/patients/': typeof AppPatientsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -125,11 +187,18 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/signup'
+    | '/app/admin'
     | '/app/correlations'
     | '/app/metrics'
+    | '/app/patients'
     | '/app/profile'
+    | '/app/share'
     | '/app/upload'
+    | '/invite/$code'
     | '/app/'
+    | '/app/admin/users'
+    | '/app/patients/$patientId'
+    | '/app/patients/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -137,11 +206,17 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/signup'
+    | '/app/admin'
     | '/app/correlations'
     | '/app/metrics'
     | '/app/profile'
+    | '/app/share'
     | '/app/upload'
+    | '/invite/$code'
     | '/app'
+    | '/app/admin/users'
+    | '/app/patients/$patientId'
+    | '/app/patients'
   id:
     | '__root__'
     | '/'
@@ -150,11 +225,18 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/signup'
+    | '/app/admin'
     | '/app/correlations'
     | '/app/metrics'
+    | '/app/patients'
     | '/app/profile'
+    | '/app/share'
     | '/app/upload'
+    | '/invite/$code'
     | '/app/'
+    | '/app/admin/users'
+    | '/app/patients/$patientId'
+    | '/app/patients/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -164,6 +246,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
+  InviteCodeRoute: typeof InviteCodeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -217,6 +300,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/invite/$code': {
+      id: '/invite/$code'
+      path: '/invite/$code'
+      fullPath: '/invite/$code'
+      preLoaderRoute: typeof InviteCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app/upload': {
       id: '/app/upload'
       path: '/upload'
@@ -224,11 +314,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppUploadRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/share': {
+      id: '/app/share'
+      path: '/share'
+      fullPath: '/app/share'
+      preLoaderRoute: typeof AppShareRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/profile': {
       id: '/app/profile'
       path: '/profile'
       fullPath: '/app/profile'
       preLoaderRoute: typeof AppProfileRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/patients': {
+      id: '/app/patients'
+      path: '/patients'
+      fullPath: '/app/patients'
+      preLoaderRoute: typeof AppPatientsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/metrics': {
@@ -245,21 +349,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCorrelationsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/admin': {
+      id: '/app/admin'
+      path: '/admin'
+      fullPath: '/app/admin'
+      preLoaderRoute: typeof AppAdminRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/patients/': {
+      id: '/app/patients/'
+      path: '/'
+      fullPath: '/app/patients/'
+      preLoaderRoute: typeof AppPatientsIndexRouteImport
+      parentRoute: typeof AppPatientsRoute
+    }
+    '/app/patients/$patientId': {
+      id: '/app/patients/$patientId'
+      path: '/$patientId'
+      fullPath: '/app/patients/$patientId'
+      preLoaderRoute: typeof AppPatientsPatientIdRouteImport
+      parentRoute: typeof AppPatientsRoute
+    }
+    '/app/admin/users': {
+      id: '/app/admin/users'
+      path: '/users'
+      fullPath: '/app/admin/users'
+      preLoaderRoute: typeof AppAdminUsersRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
   }
 }
 
+interface AppAdminRouteChildren {
+  AppAdminUsersRoute: typeof AppAdminUsersRoute
+}
+
+const AppAdminRouteChildren: AppAdminRouteChildren = {
+  AppAdminUsersRoute: AppAdminUsersRoute,
+}
+
+const AppAdminRouteWithChildren = AppAdminRoute._addFileChildren(
+  AppAdminRouteChildren,
+)
+
+interface AppPatientsRouteChildren {
+  AppPatientsPatientIdRoute: typeof AppPatientsPatientIdRoute
+  AppPatientsIndexRoute: typeof AppPatientsIndexRoute
+}
+
+const AppPatientsRouteChildren: AppPatientsRouteChildren = {
+  AppPatientsPatientIdRoute: AppPatientsPatientIdRoute,
+  AppPatientsIndexRoute: AppPatientsIndexRoute,
+}
+
+const AppPatientsRouteWithChildren = AppPatientsRoute._addFileChildren(
+  AppPatientsRouteChildren,
+)
+
 interface AppRouteChildren {
+  AppAdminRoute: typeof AppAdminRouteWithChildren
   AppCorrelationsRoute: typeof AppCorrelationsRoute
   AppMetricsRoute: typeof AppMetricsRoute
+  AppPatientsRoute: typeof AppPatientsRouteWithChildren
   AppProfileRoute: typeof AppProfileRoute
+  AppShareRoute: typeof AppShareRoute
   AppUploadRoute: typeof AppUploadRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAdminRoute: AppAdminRouteWithChildren,
   AppCorrelationsRoute: AppCorrelationsRoute,
   AppMetricsRoute: AppMetricsRoute,
+  AppPatientsRoute: AppPatientsRouteWithChildren,
   AppProfileRoute: AppProfileRoute,
+  AppShareRoute: AppShareRoute,
   AppUploadRoute: AppUploadRoute,
   AppIndexRoute: AppIndexRoute,
 }
@@ -273,6 +437,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
+  InviteCodeRoute: InviteCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
