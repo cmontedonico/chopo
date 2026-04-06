@@ -1,5 +1,7 @@
 "use node";
 
+import { extractText, getDocumentProxy } from "unpdf";
+
 export type PdfExtractionResult = {
   text: string;
   pages: number;
@@ -33,26 +35,25 @@ export async function extractTextFromPdf(buffer: ArrayBuffer): Promise<PdfExtrac
     };
   }
 
-  let parser:
-    | {
-        getText: () => Promise<{ text: string; total: number }>;
-        destroy?: () => Promise<void>;
-      }
-    | undefined;
-
   try {
-    const { PDFParse } = (await import("pdf-parse")) as {
-      PDFParse: new (options: { data: Uint8Array }) => {
-        getText: () => Promise<{ text: string; total: number }>;
-        destroy: () => Promise<void>;
+    const pdf = await getDocumentProxy(new Uint8Array(buffer));
+    const { text, totalPages } = await extractText(pdf, { mergePages: true });
+
+    await pdf.destroy();
+
+    const extractedText = Array.isArray(text) ? text.join("\n\n") : text;
+
+    if (!extractedText.trim()) {
+      return {
+        text: "",
+        pages: totalPages,
+        error: EMPTY_PDF_ERROR,
       };
-    };
-    parser = new PDFParse({ data: new Uint8Array(buffer) });
-    const result = await parser.getText();
+    }
 
     return {
-      text: result.text,
-      pages: result.total,
+      text: extractedText,
+      pages: totalPages,
     };
   } catch (error) {
     return {
@@ -60,7 +61,5 @@ export async function extractTextFromPdf(buffer: ArrayBuffer): Promise<PdfExtrac
       pages: 0,
       error: toErrorMessage(error),
     };
-  } finally {
-    await parser?.destroy?.();
   }
 }

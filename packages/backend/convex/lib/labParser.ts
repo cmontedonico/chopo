@@ -193,7 +193,106 @@ function findValueCandidate(
   };
 }
 
-function parseLine(line: string, catalog: ReadonlyArray<LabAnalyteCatalogEntry>) {
+/**
+ * Chopo PDF reverse format: `<range> <unit><value><name>`
+ * e.g. "55 - 99 mg/dL99Glucosa" or "< 200 mg/dL274Colesterol"
+ *
+ * Since unit and value are concatenated without separator, we use the catalog
+ * name as an anchor: find the name at the end, then parse backwards for value and unit.
+ */
+
+/** Match a leading reference range (e.g. "55 - 99", "< 200", ">60") */
+const CHOPO_RANGE_PREFIX =
+  /^(?<range>(?:[<>]\s*)?[+-]?\d+(?:[.,]\d+)?(?:\s*[-–]\s*[+-]?\d+(?:[.,]\d+)?)?)\s+/;
+
+function parseLineChopo(line: string, catalog: ReadonlyArray<LabAnalyteCatalogEntry>) {
+  const normalizedLine = normalizeLine(line);
+  if (!normalizedLine) {
+    return null;
+  }
+
+  // Step 1: Check if line starts with a reference range
+  const rangeMatch = normalizedLine.match(CHOPO_RANGE_PREFIX);
+  if (!rangeMatch?.groups?.range) {
+    return null;
+  }
+
+  const reference = parseRange(rangeMatch.groups.range);
+  if (!reference) {
+    return null;
+  }
+
+  // Step 2: Everything after the range is `<unit><value><name>`
+  const remainder = normalizedLine.slice(rangeMatch[0].length);
+  if (!remainder) {
+    return null;
+  }
+
+  // Step 3: Find the catalog entry name anywhere in the remainder.
+  // The name may be at the end or followed by trailing text from the next segment.
+  let bestEntry: LabAnalyteCatalogEntry | null = null;
+  let bestNameLength = 0;
+  let nameStartIndex = -1;
+
+  const remainderNorm = normalizeText(remainder);
+
+  for (const entry of catalog) {
+    if (!entry.isActive) continue;
+
+    const candidates = [entry.name, ...entry.aliases];
+    for (const candidate of candidates) {
+      const norm = normalizeText(candidate);
+      if (norm.length <= bestNameLength) continue;
+
+      const idx = remainderNorm.indexOf(norm);
+      if (idx >= 0) {
+        bestEntry = entry;
+        bestNameLength = norm.length;
+        nameStartIndex = idx;
+      }
+    }
+  }
+
+  if (!bestEntry || nameStartIndex <= 0) {
+    return null;
+  }
+
+  // Step 4: The part before the name is `<unit><value>`.
+  // Units can end with digit suffixes like "m2" in "mL/min/1.73m2".
+  // We normalize known unit suffixes (m2, m3) by inserting a separator before the value.
+  const prefixRaw = remainderNorm.slice(0, nameStartIndex);
+  const prefixNorm = prefixRaw.replace(/(m[2³]|m[3³])(\d)/, "$1 $2");
+
+  // Now extract value as the last number in the prefix
+  const valueMatch = prefixNorm.match(/([+-]?\d+(?:[.,]\d+)?)\s*$/);
+  if (!valueMatch || valueMatch.index === undefined) {
+    return null;
+  }
+
+  const value = parseNumber(valueMatch[1]);
+  if (Number.isNaN(value)) {
+    return null;
+  }
+
+  const unit = prefixNorm.slice(0, valueMatch.index).trim();
+  if (!unit) {
+    return null;
+  }
+
+  return {
+    recognized: true,
+    result: {
+      name: bestEntry.name,
+      value,
+      unit,
+      referenceMin: reference.referenceMin,
+      referenceMax: reference.referenceMax,
+      category: bestEntry.category,
+    },
+  } as const;
+}
+
+function parseLineStandard(line: string, catalog: ReadonlyArray<LabAnalyteCatalogEntry>) {
   const normalizedLine = normalizeLine(line);
   if (!normalizedLine) {
     return null;
@@ -253,6 +352,44 @@ function parseLine(line: string, catalog: ReadonlyArray<LabAnalyteCatalogEntry>)
   } as const;
 }
 
+function parseLine(line: string, catalog: ReadonlyArray<LabAnalyteCatalogEntry>) {
+  return parseLineChopo(line, catalog) ?? parseLineStandard(line, catalog);
+}
+
+/**
+ * Chopo PDFs often extract as a single continuous line. This function splits
+ * the text into logical lines by finding each reference range pattern and
+ * extracting the segment from that range to the next one.
+ */
+function splitChopoText(text: string): string[] {
+  // Find all positions where a Chopo-style range starts:
+  // "55 - 99", "16.6 - 48.5", "< 200", ">60", "0.70 - 1.2"
+  const rangeStarts: number[] = [];
+  const rangeStartPattern =
+    /(?:^|(?<=\s))(?:(?:[<>]\s*)?\d+(?:[.,]\d+)?\s*[-–]\s*\d+(?:[.,]\d+)?|[<>]\s*\d+(?:[.,]\d+)?)\s+[a-zA-Z%µμ]/g;
+
+  let match: RegExpExecArray | null;
+  while ((match = rangeStartPattern.exec(text)) !== null) {
+    rangeStarts.push(match.index);
+  }
+
+  if (rangeStarts.length === 0) {
+    return [text];
+  }
+
+  const segments: string[] = [];
+  for (let i = 0; i < rangeStarts.length; i++) {
+    const start = rangeStarts[i];
+    const end = i + 1 < rangeStarts.length ? rangeStarts[i + 1] : text.length;
+    const segment = text.slice(start, end).trim();
+    if (segment) {
+      segments.push(segment);
+    }
+  }
+
+  return segments;
+}
+
 export function parseLabResults(
   text: string,
   examType: string,
@@ -260,10 +397,16 @@ export function parseLabResults(
 ): ParseOutput {
   void examType;
 
-  const lines = text
+  // First try splitting by newlines (standard format)
+  let lines = text
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
+
+  // If we get very few lines but text is long, it's likely Chopo continuous format
+  if (lines.length < 5 && text.length > 200) {
+    lines = splitChopoText(text);
+  }
 
   const results: ParsedResult[] = [];
   const unrecognized: string[] = [];
