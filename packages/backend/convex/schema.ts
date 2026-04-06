@@ -78,6 +78,18 @@ export default defineSchema({
     .index("by_doctor", ["doctorAuthUserId"])
     .index("by_patient", ["patientAuthUserId"]),
 
+  invitations: defineTable({
+    patientId: v.string(),
+    code: v.string(),
+    status: v.string(),
+    acceptedByDoctorId: v.optional(v.string()),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_code", ["code"])
+    .index("by_patient", ["patientId"])
+    .index("by_status", ["status"]),
+
   patientProfiles: defineTable({
     patientId: v.string(),
     age: v.optional(v.number()),

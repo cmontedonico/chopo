@@ -1,6 +1,12 @@
 import { v } from "convex/values";
+
+import { authComponent } from "./auth";
 import { mutation, query } from "./_generated/server";
 import { requireAuth, requireRole } from "./lib/authorization";
+
+function isActiveExam(exam: { deletedAt?: number }) {
+  return exam.deletedAt == null;
+}
 
 export const assignToDoctor = mutation({
   args: {
@@ -35,7 +41,11 @@ export const removeFromDoctor = mutation({
     patientAuthUserId: v.string(),
   },
   handler: async (ctx, args) => {
-    await requireRole(ctx, "super_admin");
+    const user = await requireAuth(ctx);
+
+    if (user.role !== "super_admin" && user.id !== args.patientAuthUserId) {
+      throw new Error("Forbidden: insufficient permissions");
+    }
 
     const existing = await ctx.db
       .query("doctorPatients")
@@ -57,18 +67,42 @@ export const listByDoctor = query({
   handler: async (ctx) => {
     const user = await requireAuth(ctx);
 
-    if (user.role === "super_admin") {
-      return await ctx.db.query("doctorPatients").collect();
+    const assignments =
+      user.role === "super_admin"
+        ? await ctx.db.query("doctorPatients").collect()
+        : user.role === "doctor"
+          ? await ctx.db
+              .query("doctorPatients")
+              .withIndex("by_doctor", (q) => q.eq("doctorAuthUserId", user.id))
+              .collect()
+          : null;
+
+    if (!assignments) {
+      throw new Error("Forbidden: insufficient permissions");
     }
 
-    if (user.role === "doctor") {
-      return await ctx.db
-        .query("doctorPatients")
-        .withIndex("by_doctor", (q) => q.eq("doctorAuthUserId", user.id))
-        .collect();
-    }
+    return await Promise.all(
+      assignments.map(async (assignment) => {
+        const patient = await authComponent.getAnyUserById(ctx, assignment.patientAuthUserId);
+        const exams = await ctx.db
+          .query("exams")
+          .withIndex("by_patient", (q) => q.eq("patientId", assignment.patientAuthUserId))
+          .collect();
+        const activeExams = exams.filter(isActiveExam);
+        const lastExamDate =
+          activeExams.length > 0 ? Math.max(...activeExams.map((exam) => exam.examDate)) : null;
 
-    throw new Error("Forbidden: insufficient permissions");
+        return {
+          patientId: assignment.patientAuthUserId,
+          doctorAuthUserId: assignment.doctorAuthUserId,
+          createdAt: assignment.createdAt,
+          name: patient?.name ?? assignment.patientAuthUserId,
+          email: patient?.email ?? "",
+          lastExamDate,
+          totalExams: activeExams.length,
+        };
+      }),
+    );
   },
 });
 
@@ -86,11 +120,9 @@ export const listAssignedPatientIds = query({
         ? await ctx.db.query("doctorPatients").collect()
         : await ctx.db
             .query("doctorPatients")
-            .withIndex("by_doctor", (q) =>
-              q.eq("doctorAuthUserId", user.id),
-            )
+            .withIndex("by_doctor", (q) => q.eq("doctorAuthUserId", user.id))
             .collect();
 
-    return assignments.map((a) => a.patientAuthUserId);
+    return assignments.map((assignment) => assignment.patientAuthUserId);
   },
 });
