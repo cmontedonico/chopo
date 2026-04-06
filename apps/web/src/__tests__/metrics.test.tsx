@@ -7,6 +7,9 @@ import { SidebarProvider } from "@chopo-v1/ui/components/sidebar";
 import {
   MetricCatalogCard,
   MetricDetailsPanel,
+  filterHistoryByRange,
+  getChartHistory,
+  getMetricDeleteConfirmationMessage,
   MetricsPageView,
   toDateTimeLocalValue,
 } from "../routes/app/metrics";
@@ -58,6 +61,8 @@ describe("metrics page", () => {
           onSelectCatalog={() => undefined}
           onCloseSheet={() => undefined}
           onSubmitMetric={async () => undefined}
+          onUpdateMetric={async () => undefined}
+          onDeleteMetric={async () => undefined}
         />
       </SidebarProvider>,
     );
@@ -109,13 +114,58 @@ describe("metrics page", () => {
           },
         ]}
         onSubmit={async () => undefined}
+        onUpdateMetric={async () => undefined}
+        onDeleteMetric={async () => undefined}
       />,
     );
 
     expect(html.includes("Registro manual")).toBe(true);
     expect(html.includes("Guardar")).toBe(true);
-    expect(html.includes("Últimas 5 lecturas")).toBe(true);
+    expect(html.includes("Evolución temporal")).toBe(true);
+    expect(html.includes("Historial completo")).toBe(true);
+    expect(html.includes("Acciones")).toBe(true);
     expect(html.includes("Tras una jornada larga")).toBe(true);
+  });
+
+  test("builds chart data and range filters from the history", () => {
+    const now = Date.now();
+    const history = [
+      {
+        _id: "manualMetrics_1" as Id<"manualMetrics">,
+        recordedAt: now - 3_600_000,
+        value: 84,
+        notes: "Antes del desayuno",
+        catalogId: metricCatalog._id,
+      },
+      {
+        _id: "manualMetrics_2" as Id<"manualMetrics">,
+        recordedAt: now - 86_400_000 * 45,
+        value: 92,
+        notes: undefined,
+        catalogId: metricCatalog._id,
+      },
+    ];
+
+    const filtered = filterHistoryByRange(history, "30d");
+    const chartData = getChartHistory(filtered);
+
+    expect(filtered.length).toBe(1);
+    expect(chartData[0]?.dateLabel.includes("/")).toBe(true);
+    expect(chartData[0]?.dateLabel.length).toBe(5);
+    expect(chartData[0]?.value).toBe(84);
+  });
+
+  test("builds the delete confirmation copy", () => {
+    const message = getMetricDeleteConfirmationMessage({
+      _id: "manualMetrics_3" as Id<"manualMetrics">,
+      recordedAt: Date.UTC(2024, 0, 2, 3, 4),
+      value: 7,
+      notes: undefined,
+      catalogId: scaleCatalog._id,
+    });
+
+    expect(message.startsWith("¿Estás seguro de eliminar esta lectura del")).toBe(true);
+    expect(message.includes("2024")).toBe(true);
   });
 
   test("formats datetime-local values for the editor defaults", () => {
