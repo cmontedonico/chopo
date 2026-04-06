@@ -54,7 +54,7 @@ export const accept = mutation({
     code: v.string(),
   },
   handler: async (ctx, args) => {
-    const doctor = await requireRole(ctx, "doctor");
+    const doctor = await requireRole(ctx, "doctor", "super_admin");
     const now = Date.now();
     const invitation = await ctx.db
       .query("invitations")
