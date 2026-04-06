@@ -45,6 +45,12 @@ const NAV_ITEMS: NavItem[] = [
     icon: Network,
     roles: ["user", "super_admin"],
   },
+  {
+    to: "/app/metrics",
+    label: "Métricas",
+    icon: Activity,
+    roles: ["user", "super_admin"],
+  },
 ];
 
 const ADMIN_ITEMS: NavItem[] = [

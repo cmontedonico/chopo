@@ -18,6 +18,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppUploadRouteImport } from './routes/app/upload'
 import { Route as AppProfileRouteImport } from './routes/app/profile'
+import { Route as AppMetricsRouteImport } from './routes/app/metrics'
 import { Route as AppCorrelationsRouteImport } from './routes/app/correlations'
 
 const SignupRoute = SignupRouteImport.update({
@@ -65,6 +66,11 @@ const AppProfileRoute = AppProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AppRoute,
 } as any)
+const AppMetricsRoute = AppMetricsRouteImport.update({
+  id: '/metrics',
+  path: '/metrics',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCorrelationsRoute = AppCorrelationsRouteImport.update({
   id: '/correlations',
   path: '/correlations',
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/app/correlations': typeof AppCorrelationsRoute
+  '/app/metrics': typeof AppMetricsRoute
   '/app/profile': typeof AppProfileRoute
   '/app/upload': typeof AppUploadRoute
   '/app/': typeof AppIndexRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/app/correlations': typeof AppCorrelationsRoute
+  '/app/metrics': typeof AppMetricsRoute
   '/app/profile': typeof AppProfileRoute
   '/app/upload': typeof AppUploadRoute
   '/app': typeof AppIndexRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/app/correlations': typeof AppCorrelationsRoute
+  '/app/metrics': typeof AppMetricsRoute
   '/app/profile': typeof AppProfileRoute
   '/app/upload': typeof AppUploadRoute
   '/app/': typeof AppIndexRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/app/correlations'
+    | '/app/metrics'
     | '/app/profile'
     | '/app/upload'
     | '/app/'
@@ -128,6 +138,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/app/correlations'
+    | '/app/metrics'
     | '/app/profile'
     | '/app/upload'
     | '/app'
@@ -140,6 +151,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/app/correlations'
+    | '/app/metrics'
     | '/app/profile'
     | '/app/upload'
     | '/app/'
@@ -219,6 +231,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProfileRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/metrics': {
+      id: '/app/metrics'
+      path: '/metrics'
+      fullPath: '/app/metrics'
+      preLoaderRoute: typeof AppMetricsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/correlations': {
       id: '/app/correlations'
       path: '/correlations'
@@ -231,6 +250,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppCorrelationsRoute: typeof AppCorrelationsRoute
+  AppMetricsRoute: typeof AppMetricsRoute
   AppProfileRoute: typeof AppProfileRoute
   AppUploadRoute: typeof AppUploadRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -238,6 +258,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppCorrelationsRoute: AppCorrelationsRoute,
+  AppMetricsRoute: AppMetricsRoute,
   AppProfileRoute: AppProfileRoute,
   AppUploadRoute: AppUploadRoute,
   AppIndexRoute: AppIndexRoute,
