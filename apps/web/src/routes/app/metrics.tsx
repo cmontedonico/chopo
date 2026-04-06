@@ -21,6 +21,7 @@ import {
 } from "@chopo-v1/ui/components/dialog";
 import { Input } from "@chopo-v1/ui/components/input";
 import { Label } from "@chopo-v1/ui/components/label";
+import { ScrollArea } from "@chopo-v1/ui/components/scroll-area";
 import {
   Select,
   SelectContent,
@@ -55,9 +56,12 @@ import {
 } from "@chopo-v1/ui/components/table";
 import { Textarea } from "@chopo-v1/ui/components/textarea";
 import { cn } from "@chopo-v1/ui/lib/utils";
+import { ToggleGroup } from "@base-ui/react/toggle-group";
+import { Toggle } from "@base-ui/react/toggle";
 import {
   Activity,
   AlertTriangle,
+  Check,
   Battery,
   Brain,
   Calculator,
@@ -66,15 +70,29 @@ import {
   Heart,
   Moon,
   Plus,
+  Pencil,
   Ruler,
   Scale,
+  Trash2,
   Thermometer,
+  X,
   Wind,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ReferenceLine,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { ChartContainer, ChartTooltip, type ChartConfig } from "@chopo-v1/ui/components/chart";
 
 export const Route = createFileRoute("/app/metrics")({
   component: MetricsPage,
@@ -113,7 +131,21 @@ type MetricCreateArgs = {
   notes?: string;
 };
 
+type MetricUpdateArgs = {
+  metricId: Id<"manualMetrics">;
+  value: number;
+};
+
+type MetricDeleteArgs = {
+  metricId: Id<"manualMetrics">;
+};
+
 type MetricStatus = "normal" | "abnormal" | "none";
+type MetricRange = "7d" | "30d" | "90d" | "all";
+
+type ChartHistoryRecord = ManualMetricRecord & {
+  dateLabel: string;
+};
 
 const ICONS: Record<string, typeof Activity> = {
   Activity,
@@ -158,6 +190,50 @@ function formatDateTime(timestamp: number) {
 
 function formatDateOnly(timestamp: number) {
   return DATE_ONLY_FORMATTER.format(new Date(timestamp));
+}
+
+const CHART_TIME_RANGE_OPTIONS: Array<{
+  value: MetricRange;
+  label: string;
+}> = [
+  { value: "7d", label: "7D" },
+  { value: "30d", label: "30D" },
+  { value: "90d", label: "90D" },
+  { value: "all", label: "Todo" },
+];
+
+const CHART_RANGE_LIMITS: Record<Exclude<MetricRange, "all">, number> = {
+  "7d": 7 * 24 * 60 * 60 * 1000,
+  "30d": 30 * 24 * 60 * 60 * 1000,
+  "90d": 90 * 24 * 60 * 60 * 1000,
+};
+
+function formatChartDateLabel(timestamp: number) {
+  const date = new Date(timestamp);
+  const day = `${date.getDate()}`.padStart(2, "0");
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+
+  return `${day}/${month}`;
+}
+
+function getChartHistory(history: ManualMetricRecord[]) {
+  return history.map((entry) => ({
+    ...entry,
+    dateLabel: formatChartDateLabel(entry.recordedAt),
+  }));
+}
+
+function filterHistoryByRange(history: ManualMetricRecord[], range: MetricRange) {
+  if (range === "all") {
+    return history;
+  }
+
+  const cutoff = Date.now() - CHART_RANGE_LIMITS[range];
+  return history.filter((entry) => entry.recordedAt >= cutoff);
+}
+
+function getMetricDeleteConfirmationMessage(entry: ManualMetricRecord) {
+  return `¿Estás seguro de eliminar esta lectura del ${formatDateOnly(entry.recordedAt)}?`;
 }
 
 function formatRelativeTime(timestamp: number | null) {
@@ -428,34 +504,357 @@ function MetricValueField({
   );
 }
 
-function MetricHistoryTable({ history }: { history: ManualMetricRecord[] }) {
+function MetricEvolutionChart({
+  catalog,
+  history,
+  range,
+}: {
+  catalog: MetricCatalogRecord;
+  history: ManualMetricRecord[];
+  range: MetricRange;
+}) {
+  const chartData = useMemo(
+    () => getChartHistory(filterHistoryByRange(history, range)),
+    [history, range],
+  );
+  const chartConfig: ChartConfig = {
+    value: {
+      label: `${catalog.name} · evolución`,
+      color: "var(--chart-2)",
+    },
+  };
+
+  if (chartData.length === 0) {
+    return (
+      <div className="flex h-[200px] items-center justify-center rounded-none border border-dashed border-border/60 bg-muted/20 text-sm text-muted-foreground">
+        No hay lecturas en este rango temporal.
+      </div>
+    );
+  }
+
+  const isNumeric = catalog.inputType === "numeric";
+
+  return (
+    <ChartContainer config={chartConfig} className="h-[200px] w-full">
+      {isNumeric ? (
+        <AreaChart data={chartData} accessibilityLayer>
+          <CartesianGrid vertical={false} />
+          <XAxis
+            dataKey="dateLabel"
+            tickLine={false}
+            axisLine={false}
+            fontSize={12}
+            interval="preserveStartEnd"
+          />
+          <YAxis tickLine={false} axisLine={false} fontSize={12} width={44} />
+          {catalog.referenceMin !== undefined ? (
+            <ReferenceLine
+              y={catalog.referenceMin}
+              stroke="var(--chart-3)"
+              strokeDasharray="4 4"
+              label={{ value: "Mín", position: "insideTopLeft" }}
+            />
+          ) : null}
+          {catalog.referenceMax !== undefined ? (
+            <ReferenceLine
+              y={catalog.referenceMax}
+              stroke="var(--chart-4)"
+              strokeDasharray="4 4"
+              label={{ value: "Máx", position: "insideBottomLeft" }}
+            />
+          ) : null}
+          <ChartTooltip content={<MetricChartTooltip catalog={catalog} />} />
+          <Area
+            type="monotone"
+            dataKey="value"
+            stroke="var(--chart-2)"
+            fill="var(--chart-2)"
+            fillOpacity={0.2}
+            strokeWidth={2}
+          />
+        </AreaChart>
+      ) : (
+        <BarChart data={chartData} accessibilityLayer>
+          <CartesianGrid vertical={false} />
+          <XAxis
+            dataKey="dateLabel"
+            tickLine={false}
+            axisLine={false}
+            fontSize={12}
+            interval="preserveStartEnd"
+          />
+          <YAxis tickLine={false} axisLine={false} fontSize={12} width={44} />
+          <ChartTooltip content={<MetricChartTooltip catalog={catalog} />} />
+          <Bar dataKey="value" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
+        </BarChart>
+      )}
+    </ChartContainer>
+  );
+}
+
+function MetricChartTooltip({
+  active,
+  payload,
+  catalog,
+}: {
+  active?: boolean;
+  payload?: Array<{ payload?: ChartHistoryRecord; value?: number }>;
+  catalog: MetricCatalogRecord;
+}) {
+  if (!active || !payload?.length) {
+    return null;
+  }
+
+  const entry = payload[0]?.payload;
+  if (!entry) {
+    return null;
+  }
+
+  return (
+    <div className="grid min-w-44 gap-1.5 rounded-none border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
+      <div className="font-medium">{formatDateTime(entry.recordedAt)}</div>
+      <div className="text-muted-foreground">
+        Valor: <span className="font-mono text-foreground">{formatValue(entry.value)}</span>{" "}
+        {catalog.unit}
+      </div>
+      {entry.notes ? <div className="text-muted-foreground">Nota: {entry.notes}</div> : null}
+    </div>
+  );
+}
+
+function MetricDeleteConfirmationDialog({
+  entry,
+  open,
+  onOpenChange,
+  onConfirm,
+}: {
+  entry: ManualMetricRecord | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: () => Promise<void>;
+}) {
+  const question = entry ? getMetricDeleteConfirmationMessage(entry) : "";
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Eliminar lectura</DialogTitle>
+          <DialogDescription>{question}</DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={async () => {
+              await onConfirm();
+            }}
+          >
+            Eliminar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function MetricHistoryTable({
+  catalog,
+  history,
+  onUpdateMetric,
+  onDeleteMetric,
+}: {
+  catalog: MetricCatalogRecord;
+  history: ManualMetricRecord[];
+  onUpdateMetric: (args: MetricUpdateArgs) => Promise<void>;
+  onDeleteMetric: (args: MetricDeleteArgs) => Promise<void>;
+}) {
+  const [editingMetricId, setEditingMetricId] = useState<Id<"manualMetrics"> | null>(null);
+  const [editingValue, setEditingValue] = useState("");
+  const [pendingDeleteEntry, setPendingDeleteEntry] = useState<ManualMetricRecord | null>(null);
+
+  const orderedHistory = useMemo(() => [...history].reverse(), [history]);
+  const editingEntry = useMemo(
+    () => history.find((entry) => entry._id === editingMetricId) ?? null,
+    [editingMetricId, history],
+  );
+
+  useEffect(() => {
+    if (editingMetricId && !history.some((entry) => entry._id === editingMetricId)) {
+      setEditingMetricId(null);
+      setEditingValue("");
+    }
+  }, [editingMetricId, history]);
+
   if (history.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">Todavía no hay historial para esta métrica.</p>
     );
   }
 
+  const startEditing = (entry: ManualMetricRecord) => {
+    setEditingMetricId(entry._id);
+    setEditingValue(String(entry.value));
+  };
+
+  const cancelEditing = () => {
+    setEditingMetricId(null);
+    setEditingValue("");
+  };
+
+  const saveEditing = async () => {
+    if (!editingEntry) {
+      return;
+    }
+
+    const numericValue = Number(editingValue);
+    if (!Number.isFinite(numericValue)) {
+      toast.error("No se pudo actualizar la métrica");
+      return;
+    }
+
+    if (catalog.inputType === "scale") {
+      const scaleMax = catalog.scaleMax;
+      if (scaleMax === undefined || numericValue < 1 || numericValue > scaleMax) {
+        toast.error("No se pudo actualizar la métrica");
+        return;
+      }
+    }
+
+    try {
+      await onUpdateMetric({
+        metricId: editingEntry._id,
+        value: numericValue,
+      });
+      toast.success("Métrica actualizada");
+      cancelEditing();
+    } catch {
+      toast.error("No se pudo actualizar la métrica");
+    }
+  };
+
+  const deletePendingEntry = pendingDeleteEntry;
+
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Fecha</TableHead>
-          <TableHead className="text-right">Valor</TableHead>
-          <TableHead>Notas</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {history.map((entry) => (
-          <TableRow key={entry._id}>
-            <TableCell>{formatDateTime(entry.recordedAt)}</TableCell>
-            <TableCell className="text-right font-mono">{formatValue(entry.value)}</TableCell>
-            <TableCell className="max-w-40 truncate text-muted-foreground">
-              {entry.notes || "—"}
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <div className="space-y-3">
+      <ScrollArea className="max-h-[300px] rounded-none border border-border/60 pr-3">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Fecha/Hora</TableHead>
+              <TableHead className="text-right">Valor</TableHead>
+              <TableHead>Notas</TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {orderedHistory.map((entry) => {
+              const isEditing = editingMetricId === entry._id;
+
+              return (
+                <TableRow key={entry._id}>
+                  <TableCell className="whitespace-nowrap">
+                    {formatDateTime(entry.recordedAt)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono">
+                    {isEditing ? (
+                      <Input
+                        className="h-8 w-24 text-right"
+                        type="number"
+                        inputMode="decimal"
+                        min={catalog.inputType === "scale" ? 1 : undefined}
+                        max={catalog.inputType === "scale" ? catalog.scaleMax : undefined}
+                        step={catalog.inputType === "scale" ? 1 : "any"}
+                        value={editingValue}
+                        onChange={(event) => setEditingValue(event.target.value)}
+                      />
+                    ) : (
+                      formatValue(entry.value)
+                    )}
+                  </TableCell>
+                  <TableCell className="max-w-40 truncate text-muted-foreground">
+                    {entry.notes || "—"}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-1">
+                      {isEditing ? (
+                        <>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={saveEditing}
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                            <span className="sr-only">Guardar</span>
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={cancelEditing}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                            <span className="sr-only">Cancelar</span>
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => startEditing(entry)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            <span className="sr-only">Editar</span>
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => setPendingDeleteEntry(entry)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            <span className="sr-only">Eliminar</span>
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </ScrollArea>
+
+      <MetricDeleteConfirmationDialog
+        entry={deletePendingEntry}
+        open={deletePendingEntry !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingDeleteEntry(null);
+          }
+        }}
+        onConfirm={async () => {
+          if (!deletePendingEntry) {
+            return;
+          }
+
+          try {
+            await onDeleteMetric({ metricId: deletePendingEntry._id });
+            toast.success("Lectura eliminada");
+            setPendingDeleteEntry(null);
+          } catch {
+            toast.error("No se pudo eliminar la lectura");
+          }
+        }}
+      />
+    </div>
   );
 }
 
@@ -463,40 +862,36 @@ function MetricDetailsPanel({
   catalog,
   history,
   onSubmit,
+  onUpdateMetric,
+  onDeleteMetric,
 }: {
   catalog: MetricCatalogRecord;
   history: ManualMetricRecord[] | undefined;
   onSubmit: (args: MetricCreateArgs) => Promise<void>;
+  onUpdateMetric: (args: MetricUpdateArgs) => Promise<void>;
+  onDeleteMetric: (args: MetricDeleteArgs) => Promise<void>;
 }) {
   const [value, setValue] = useState("");
   const [recordedAt, setRecordedAt] = useState(toDateTimeLocalValue(Date.now()));
   const [notes, setNotes] = useState("");
+  const [range, setRange] = useState<MetricRange>("30d");
 
   useEffect(() => {
     setValue(catalog.inputType === "scale" ? String(Math.ceil((catalog.scaleMax ?? 10) / 2)) : "");
     setRecordedAt(toDateTimeLocalValue(Date.now()));
     setNotes("");
+    setRange("30d");
   }, [catalog._id, catalog.inputType, catalog.scaleMax]);
 
-  const recentHistory = useMemo(() => {
-    if (!history) {
-      return [];
-    }
-
-    return [...history].slice(-5).reverse();
-  }, [history]);
-
   const canSave = value.trim() !== "";
+  const Icon = getCatalogIcon(catalog.icon);
 
   return (
     <div className="space-y-6">
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <div className="flex size-10 items-center justify-center rounded-none bg-primary/10 text-primary">
-            {(() => {
-              const Icon = getCatalogIcon(catalog.icon);
-              return <Icon className="h-5 w-5" />;
-            })()}
+            <Icon className="h-5 w-5" />
           </div>
           <div>
             <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
@@ -508,8 +903,45 @@ function MetricDetailsPanel({
           </div>
         </div>
         <p className="text-sm text-muted-foreground">
-          Guarda una nueva lectura y revisa las últimas mediciones de esta métrica.
+          Guarda una nueva lectura, revisa su evolución y administra el historial completo.
         </p>
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h4 className="text-sm font-medium">Evolución temporal</h4>
+            <p className="text-xs text-muted-foreground">Filtra el historial por rango temporal</p>
+          </div>
+          <ToggleGroup
+            value={[range]}
+            onValueChange={(groupValue) => {
+              const nextValue = groupValue[0] as MetricRange | undefined;
+              if (nextValue) {
+                setRange(nextValue);
+              }
+            }}
+            className="flex gap-1"
+          >
+            {CHART_TIME_RANGE_OPTIONS.map((option) => (
+              <Toggle
+                key={option.value}
+                value={option.value}
+                className={cn(
+                  "inline-flex h-7 items-center justify-center rounded-none border border-border bg-background px-2.5 text-xs font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground",
+                )}
+              >
+                {option.label}
+              </Toggle>
+            ))}
+          </ToggleGroup>
+        </div>
+
+        {history === undefined ? (
+          <Skeleton className="h-[200px] w-full" />
+        ) : (
+          <MetricEvolutionChart catalog={catalog} history={history} range={range} />
+        )}
       </div>
 
       <div className="space-y-4">
@@ -582,8 +1014,8 @@ function MetricDetailsPanel({
 
       <div className="space-y-3">
         <div>
-          <h4 className="text-sm font-medium">Últimas 5 lecturas</h4>
-          <p className="text-xs text-muted-foreground">Historial reciente de esta métrica</p>
+          <h4 className="text-sm font-medium">Historial completo</h4>
+          <p className="text-xs text-muted-foreground">Fecha/Hora, valor, notas y acciones</p>
         </div>
         {history === undefined ? (
           <div className="space-y-2">
@@ -592,7 +1024,12 @@ function MetricDetailsPanel({
             <Skeleton className="h-8 w-full" />
           </div>
         ) : (
-          <MetricHistoryTable history={recentHistory} />
+          <MetricHistoryTable
+            catalog={catalog}
+            history={history}
+            onUpdateMetric={onUpdateMetric}
+            onDeleteMetric={onDeleteMetric}
+          />
         )}
       </div>
     </div>
@@ -744,6 +1181,8 @@ function MetricsPageView({
   onSelectCatalog,
   onCloseSheet,
   onSubmitMetric,
+  onUpdateMetric,
+  onDeleteMetric,
 }: {
   catalogs: MetricCatalogRecord[] | undefined;
   latestMetrics: LatestMetricRecord[] | undefined;
@@ -752,6 +1191,8 @@ function MetricsPageView({
   onSelectCatalog: (catalogId: Id<"metricCatalog">) => void;
   onCloseSheet: () => void;
   onSubmitMetric: (args: MetricCreateArgs) => Promise<void>;
+  onUpdateMetric: (args: MetricUpdateArgs) => Promise<void>;
+  onDeleteMetric: (args: MetricDeleteArgs) => Promise<void>;
 }) {
   if (catalogs === undefined || latestMetrics === undefined) {
     return (
@@ -837,6 +1278,8 @@ function MetricsPageView({
               catalog={selectedCatalog}
               history={history}
               onSubmit={onSubmitMetric}
+              onUpdateMetric={onUpdateMetric}
+              onDeleteMetric={onDeleteMetric}
             />
           ) : null}
         </SheetContent>
@@ -855,6 +1298,8 @@ function MetricsPage() {
     isAuthenticated ? {} : "skip",
   );
   const createMetric = useMutation(api.manualMetrics.create);
+  const updateMetric = useMutation(api.manualMetrics.update);
+  const deleteMetric = useMutation(api.manualMetrics.softDelete);
   const [selectedCatalogId, setSelectedCatalogId] = useState<Id<"metricCatalog"> | null>(null);
 
   useEffect(() => {
@@ -885,6 +1330,12 @@ function MetricsPage() {
       onSubmitMetric={async (args) => {
         await createMetric(args);
       }}
+      onUpdateMetric={async (args) => {
+        await updateMetric(args);
+      }}
+      onDeleteMetric={async (args) => {
+        await deleteMetric(args);
+      }}
     />
   );
 }
@@ -892,8 +1343,13 @@ function MetricsPage() {
 export {
   EmptyState,
   MetricCatalogCard,
+  getChartHistory,
+  filterHistoryByRange,
+  getMetricDeleteConfirmationMessage,
   MetricDetailsPanel,
+  MetricDeleteConfirmationDialog,
   MetricHistoryTable,
+  MetricEvolutionChart,
   MetricsPageView,
   formatDateOnly,
   formatDateTime,

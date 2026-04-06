@@ -179,7 +179,10 @@ function createMockCtx({
       withIndex: (
         _indexName: string,
         apply: (query: {
-          eq: (field: string, value: unknown) => {
+          eq: (
+            field: string,
+            value: unknown,
+          ) => {
             eq: (field: string, value: unknown) => unknown;
           };
         }) => unknown,
@@ -408,6 +411,7 @@ describe("convex/manualMetrics", () => {
       notes: "Initial",
     });
     const { ctx, metricStore, auditStore } = createMockCtx({
+      metricCatalog: [makeCatalog()],
       manualMetrics: [existingMetric],
     });
     const dateNowSpy = vi.spyOn(Date, "now");
@@ -432,6 +436,35 @@ describe("convex/manualMetrics", () => {
       "value",
       "notes",
     ]);
+  });
+
+  it("update enforces scale bounds when changing the metric value", async () => {
+    const scaleCatalog = makeCatalog({
+      _id: "metricCatalog_scale" as Id<"metricCatalog">,
+      inputType: "scale",
+      scaleMax: 10,
+      referenceMin: undefined,
+      referenceMax: undefined,
+    });
+    const scaleMetric = makeMetric({
+      _id: "manualMetrics_scale" as Id<"manualMetrics">,
+      catalogId: scaleCatalog._id,
+      value: 6,
+    });
+    const { ctx, metricStore, auditStore } = createMockCtx({
+      metricCatalog: [scaleCatalog],
+      manualMetrics: [scaleMetric],
+    });
+
+    await expect(
+      updateHandler._handler(ctx, {
+        metricId: scaleMetric._id,
+        value: 11,
+      }),
+    ).rejects.toThrow("Scale value out of range");
+
+    expect(metricStore.get(scaleMetric._id)?.value).toBe(6);
+    expect(Array.from(auditStore.values())).toHaveLength(0);
   });
 
   it("softDelete excludes removed metrics from patient and catalog queries", async () => {
