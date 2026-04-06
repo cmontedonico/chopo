@@ -76,11 +76,14 @@ function createMockCtx({ metricCatalog = [] }: { metricCatalog?: MockMetric[] } 
         ...value,
       });
     }),
-    query: vi.fn((table: string) => ({
+    query: vi.fn((_table: string) => ({
       withIndex: (
         _indexName: string,
         apply: (query: {
-          eq: (field: string, value: unknown) => {
+          eq: (
+            field: string,
+            value: unknown,
+          ) => {
             eq: (field: string, value: unknown) => unknown;
           };
         }) => unknown,
@@ -115,7 +118,10 @@ const requireAuthMock = vi.mocked(auth.requireAuth);
 const requireRoleMock = vi.mocked(auth.requireRole);
 
 const listHandler = list as unknown as Handler<Record<string, never>, Promise<MockMetric[]>>;
-const seedHandler = seed as unknown as Handler<Record<string, never>, Promise<Array<Id<"metricCatalog">>>>;
+const seedHandler = seed as unknown as Handler<
+  Record<string, never>,
+  Promise<Array<Id<"metricCatalog">>>
+>;
 const updateHandler = update as unknown as Handler<
   {
     catalogId: Id<"metricCatalog">;

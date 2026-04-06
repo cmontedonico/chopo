@@ -121,11 +121,7 @@ function createMockCtx({
     return [];
   };
 
-  const sortResults = (
-    indexName: string,
-    direction: "asc" | "desc",
-    rows: MockResult[],
-  ) => {
+  const sortResults = (indexName: string, direction: "asc" | "desc", rows: MockResult[]) => {
     const sorted = [...rows].sort((left, right) => {
       if (indexName === "by_patient_name") {
         const createdAtCompare = left.createdAt - right.createdAt;
@@ -212,7 +208,10 @@ function createMockCtx({
       withIndex: (
         indexName: string,
         apply: (query: {
-          eq: (field: string, value: unknown) => {
+          eq: (
+            field: string,
+            value: unknown,
+          ) => {
             eq: (field: string, value: unknown) => unknown;
           };
         }) => unknown,
