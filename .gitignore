@@ -44,6 +44,11 @@ lerna-debug.log*
 coverage
 .nyc_output
 
+# Playwright
+playwright-report/
+test-results/
+blob-report/
+
 # Misc
 *.tgz
 .cache
