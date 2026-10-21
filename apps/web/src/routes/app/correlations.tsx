@@ -1,27 +1,26 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Avatar, AvatarFallback } from "@chopo-v1/ui/components/avatar";
 import { Badge } from "@chopo-v1/ui/components/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@chopo-v1/ui/components/card";
-import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@chopo-v1/ui/components/chart";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@chopo-v1/ui/components/card";
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@chopo-v1/ui/components/chart";
 import { Progress } from "@chopo-v1/ui/components/progress";
 import { Separator } from "@chopo-v1/ui/components/separator";
 import { SidebarTrigger } from "@chopo-v1/ui/components/sidebar";
-import {
-  AlertTriangle,
-  CheckCircle,
-  Heart,
-  Network,
-  Shield,
-  User,
-} from "lucide-react";
+import { AlertTriangle, CheckCircle, Heart, Network, Shield, User } from "lucide-react";
 import { Cell, Pie, PieChart, RadialBar, RadialBarChart } from "recharts";
 
-import {
-  BLOOD_TEST_RESULTS,
-  CORRELATIONS,
-  USER_PROFILE,
-  type Correlation,
-} from "@/lib/mock-data";
+import { BLOOD_TEST_RESULTS, CORRELATIONS, USER_PROFILE, type Correlation } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/app/correlations")({
   component: CorrelationsPage,
@@ -150,7 +149,13 @@ function HealthScoreChart() {
         <div className="-mt-16 text-center">
           <p className="text-4xl font-bold">{score}%</p>
           <p className="text-sm text-muted-foreground">
-            {score >= 90 ? "Excelente" : score >= 75 ? "Bueno" : score >= 60 ? "Regular" : "Atención"}
+            {score >= 90
+              ? "Excelente"
+              : score >= 75
+                ? "Bueno"
+                : score >= 60
+                  ? "Regular"
+                  : "Atención"}
           </p>
         </div>
       </CardContent>
@@ -187,7 +192,15 @@ function RiskDistributionChart() {
       <CardContent className="flex flex-col items-center">
         <ChartContainer config={chartConfig} className="h-[200px] w-[200px]">
           <PieChart>
-            <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80}>
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              innerRadius={50}
+              outerRadius={80}
+            >
               {data.map((entry) => (
                 <Cell key={entry.name} fill={entry.fill} />
               ))}
@@ -219,7 +232,16 @@ function CorrelationCard({ correlation }: { correlation: Correlation }) {
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <CardTitle className="text-base">{correlation.title}</CardTitle>
-          <Badge variant={correlation.risk === "low" ? "secondary" : correlation.risk === "high" ? "destructive" : "outline"} className="gap-1">
+          <Badge
+            variant={
+              correlation.risk === "low"
+                ? "secondary"
+                : correlation.risk === "high"
+                  ? "destructive"
+                  : "outline"
+            }
+            className="gap-1"
+          >
             <Icon className="h-3 w-3" />
             {config.label}
           </Badge>
@@ -302,7 +324,11 @@ function CorrelationsPage() {
               { label: "Riesgo cardiovascular", value: 25, desc: "Moderado para tu rango de edad" },
               { label: "Diabetes tipo 2", value: 15, desc: "Bajo — glucosa y HbA1c en rango" },
               { label: "Enfermedad renal", value: 5, desc: "Muy bajo — función renal normal" },
-              { label: "Enfermedad hepática", value: 8, desc: "Bajo — marcadores hepáticos normales" },
+              {
+                label: "Enfermedad hepática",
+                value: 8,
+                desc: "Bajo — marcadores hepáticos normales",
+              },
               { label: "Osteoporosis", value: 10, desc: "Bajo — calcio y vitamina D adecuados" },
             ].map((risk) => (
               <div key={risk.label} className="space-y-1">

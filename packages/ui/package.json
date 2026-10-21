@@ -28,9 +28,9 @@
     "tw-animate-css": "^1.3.4"
   },
   "devDependencies": {
+    "@chopo-v1/config": "workspace:*",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@chopo-v1/config": "workspace:*",
     "tailwindcss": "catalog:",
     "typescript": "^5.9.3"
   }

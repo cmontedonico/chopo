@@ -1,10 +1,6 @@
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import { authComponent } from "../auth";
-import {
-  superAdminRole,
-  userRole,
-  doctorRole,
-} from "./access";
+import { superAdminRole, userRole, doctorRole } from "./access";
 
 export type Role = "super_admin" | "user" | "doctor";
 
@@ -21,9 +17,7 @@ type Ctx = QueryCtx | MutationCtx;
 /**
  * Get the current authenticated user. Returns null if not authenticated.
  */
-export async function getAuthUser(
-  ctx: Ctx,
-): Promise<AuthenticatedUser | null> {
+export async function getAuthUser(ctx: Ctx): Promise<AuthenticatedUser | null> {
   const authUser = await authComponent.safeGetAuthUser(ctx);
   if (!authUser) return null;
 
@@ -54,10 +48,7 @@ export async function requireAuth(ctx: Ctx): Promise<AuthenticatedUser> {
 /**
  * Require one of the given roles.
  */
-export async function requireRole(
-  ctx: Ctx,
-  ...roles: Role[]
-): Promise<AuthenticatedUser> {
+export async function requireRole(ctx: Ctx, ...roles: Role[]): Promise<AuthenticatedUser> {
   const user = await requireAuth(ctx);
   if (!roles.includes(user.role)) {
     throw new Error(`Forbidden: requires role ${roles.join(" or ")}`);
@@ -69,11 +60,7 @@ export async function requireRole(
  * Check permission using the access control system.
  * Uses the role definitions from better-auth admin plugin.
  */
-export function checkPermission(
-  role: Role,
-  resource: string,
-  action: string,
-): boolean {
+export function checkPermission(role: Role, resource: string, action: string): boolean {
   const roleMap = {
     super_admin: superAdminRole,
     user: userRole,
